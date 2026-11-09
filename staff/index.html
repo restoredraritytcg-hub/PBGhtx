@@ -133,6 +133,12 @@ label.f .t{margin-top:4px}
 .toggle{display:flex;gap:10px;align-items:center;font-size:14px;margin-top:8px}
 .toggle input{width:20px;height:20px;accent-color:var(--ink)}
 
+.pindots{display:flex;gap:14px;justify-content:center;margin:22px 0 18px}
+.pindots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink)}
+.pindots i.f{background:var(--ink)}
+.pinpad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;justify-content:center}
+.pinpad button{height:64px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:24px;font-weight:800;cursor:pointer}
+.pinpad button:active{background:var(--paper)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;z-index:60;font-size:15px}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:50;padding:20px}
 .modal{background:#fff;border-radius:16px;width:min(520px,100%);padding:24px}
@@ -145,7 +151,7 @@ label.f .t{margin-top:4px}
   <span class="t">Staff portal</span>
   <div class="r" id="barRight"></div>
 </header>
-<div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Sign in with any email; use an email containing "restored" to see the Restored Rarity partner view, or one starting with "web" for the website-only editor.</div>
+<div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Demo PINs: 482913 owner, 517204 staff, 260815 Restored Rarity, 739461 website only, 904372 shop iPad.</div>
 <div id="app"></div>
 
 <script>
@@ -204,26 +210,128 @@ async function boot(){
   bar(); route();
 }
 function bar(){
-  $("#barRight").innerHTML = me ? `${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  $("#barRight").innerHTML = me ? `${me.role === "owner" ? `<a class="btn btn-line btn-sm" href="#team">Team</a>` : ""}${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
   const o = $("#out"); if(o) o.onclick = async () => { await PBG.signOut(); me = null; selected.clear(); view = { group: "open", grader: "all", q: "" }; bar(); location.hash = ""; signInView(); };
 }
 window.addEventListener("hashchange", () => me && route());
 function route(){
+  if(location.hash === "#team" && me.role === "owner") return teamPage();
   if(me.role === "web" || (me.role === "owner" && location.hash.startsWith("#site"))) return sitePage(location.hash.replace(/^#site\/?/, ""));
   if(location.hash === "#payouts" && ["owner","partner"].includes(me.role)) return payouts();
   const id = location.hash.replace(/^#order-/, ""); if(location.hash.startsWith("#order-") && id) detail(id); else list();
 }
 
-function signInView(){
-  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Staff sign in</h2>
-    <p style="color:var(--steel);margin-top:6px;font-size:15px">Track grading orders and update their stages.</p>
+function signedIn(){ if(me.role !== "web") return PBG.stages().then(x => { stages = x; bar(); route(); }); bar(); route(); }
+async function signInView(mode){
+  if(!mode && PBG.mode === "live"){ try{ if(await PBG.needsSetup()) return setupView(); }catch(e){} }
+  if(mode === "email") return emailSignInView();
+  let pin = "";
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2 style="text-align:center">Enter your PIN</h2>
+    <p style="color:var(--steel);margin-top:6px;font-size:15px;text-align:center">Your own 6-digit staff PIN. Ask the owner if you don't have one.</p>
+    <div class="pindots" id="dots">${"<i></i>".repeat(6)}</div>
+    <div class="pinpad" id="pad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k => k === "" ? "<span></span>" : `<button type="button" data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("")}</div>
+    <p class="err" id="er" style="text-align:center" hidden></p>
+    <p style="text-align:center;margin-top:18px"><button class="btn btn-ghost btn-sm" id="useEmail">Sign in with email instead</button></p></div>`;
+  const dots = () => [...$("#dots").children].forEach((d, i) => d.classList.toggle("f", i < pin.length));
+  let busy = false;
+  const press = async k => {
+    if(busy) return; $("#er").hidden = true;
+    pin = k === "⌫" ? pin.slice(0, -1) : (pin + k).slice(0, 6); dots();
+    if(pin.length < 6) return;
+    busy = true; $("#pad").style.opacity = .5;
+    try{ me = await PBG.signInWithPin(pin); document.removeEventListener("keydown", onKey); signedIn(); }
+    catch(x){ pin = ""; dots(); $("#er").hidden = false; $("#er").textContent = x.message; busy = false; $("#pad").style.opacity = 1; }
+  };
+  const onKey = e => { if(!$("#pad")){ document.removeEventListener("keydown", onKey); return; } if(/^[0-9]$/.test(e.key)) press(e.key); else if(e.key === "Backspace") press("⌫"); };
+  document.addEventListener("keydown", onKey);
+  $("#pad").onclick = e => { const b = e.target.closest("button"); if(b) press(b.dataset.k); };
+  $("#useEmail").onclick = () => { document.removeEventListener("keydown", onKey); signInView("email"); };
+}
+function emailSignInView(){
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Sign in with email</h2>
+    <p style="color:var(--steel);margin-top:6px;font-size:15px">For accounts created in Supabase with an email and password.</p>
     <form class="grid" id="f"><label class="f">Email<input class="t" id="em" type="email" autocomplete="username" required></label>
     <label class="f">Password<input class="t" id="pw" type="password" autocomplete="current-password" required></label>
-    <button class="btn btn-red btn-lg" id="go">Sign in</button><p class="err" id="er" hidden></p></form></div>`;
+    <button class="btn btn-red btn-lg" id="go">Sign in</button><p class="err" id="er" hidden></p>
+    <button type="button" class="btn btn-ghost btn-sm" id="usePin">Use a PIN instead</button></form></div>`;
+  $("#usePin").onclick = () => signInView("pin");
   $("#f").onsubmit = async e => { e.preventDefault(); const b = $("#go"), er = $("#er"); b.disabled = true; b.textContent = "Signing in…"; er.hidden = true;
-    try{ me = await PBG.signIn($("#em").value.trim(), $("#pw").value); if(me.role !== "web") stages = await PBG.stages(); bar(); route(); }
+    try{ me = await PBG.signIn($("#em").value.trim(), $("#pw").value); signedIn(); }
     catch(x){ er.hidden = false; er.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; } };
 }
+function setupView(){
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Set up the owner</h2>
+    <p style="color:var(--steel);margin-top:6px;font-size:15px">First time only. Create the owner's PIN. The owner then adds everyone else from the Team page.</p>
+    <form class="grid" id="f"><label class="f">Your name<input class="t" id="nm" required></label>
+    <label class="f">Choose a 6-digit PIN<input class="t" id="p1" inputmode="numeric" maxlength="6" type="password" autocomplete="new-password" required></label>
+    <label class="f">Type it again<input class="t" id="p2" inputmode="numeric" maxlength="6" type="password" autocomplete="new-password" required></label>
+    <button class="btn btn-red btn-lg" id="go">Create owner and sign in</button><p class="err" id="er" hidden></p></form></div>`;
+  $("#f").onsubmit = async e => { e.preventDefault(); const er = $("#er"), b = $("#go"); er.hidden = true;
+    const p1 = $("#p1").value, p2 = $("#p2").value;
+    if(!/^[0-9]{6}$/.test(p1)){ er.hidden = false; er.textContent = "The PIN must be 6 digits."; return; }
+    if(p1 !== p2){ er.hidden = false; er.textContent = "The two PINs don't match."; return; }
+    if(weakPin(p1)){ er.hidden = false; er.textContent = "Pick a PIN that's harder to guess (no repeats or runs like 123456)."; return; }
+    b.disabled = true;
+    try{ me = await PBG.setupOwner($("#nm").value.trim(), p1); signedIn(); }catch(x){ er.hidden = false; er.textContent = x.message; b.disabled = false; } };
+}
+const weakPin = p => /^(\d)\1+$/.test(p) || "0123456789012".includes(p) || "9876543210987".includes(p);
+
+/* ---------- team (owners): who can sign in, their role and PIN ---------- */
+const ROLE_INFO = { owner: "Owner: everything, including pricing, team and website", staff: "Staff: orders and pickups", partner: "Restored Rarity: prep orders only, no customer contact details", web: "Website: edits the website only" };
+async function teamPage(){
+  $("#app").innerHTML = `<div class="wrap"><div class="empty">Loading team…</div></div>`;
+  let team; try{ team = await PBG.team(); }catch(e){ $("#app").innerHTML = `<div class="wrap"><div class="panel">Couldn't load the team: ${esc(e.message)}</div></div>`; return; }
+  const roleSel = (id, v) => `<select class="t" ${id}>${Object.keys(ROLE_INFO).map(k => `<option value="${k}" ${k === v ? "selected" : ""}>${{owner:"Owner",staff:"Staff",partner:"Restored Rarity",web:"Website"}[k]}</option>`).join("")}</select>`;
+  $("#app").innerHTML = `<div class="wrap" style="max-width:980px"><div class="top"><h1>Team</h1></div>
+    <p style="color:var(--steel);margin:-6px 0 16px">Everyone signs in to this portal with their own 6-digit PIN. The shop iPad connects with a PIN too (iPad > Staff > Settings > Connect this iPad).</p>
+    <div class="panel"><h2>People</h2>
+      <div class="table" style="margin-top:12px">${team.map(t => `<div class="row" style="grid-template-columns:1.2fr 1.1fr .9fr 1.6fr;cursor:default" data-u="${esc(t.user_id)}">
+        <span><b>${esc(t.name)}</b>${t.user_id === me.user_id ? ' <span class="tag">You</span>' : ""}${t.active ? "" : ' <span class="tag" style="background:#EEE;color:#555">Turned off</span>'}<small>${t.pin_set_at ? "PIN set " + fmtDate(t.pin_set_at) : "No PIN yet"}</small></span>
+        <span>${roleSel("data-role", t.role)}</span>
+        <span><label class="toggle" style="margin:0"><input type="checkbox" data-active ${t.active ? "checked" : ""} ${t.user_id === me.user_id ? "disabled" : ""}> Can sign in</label></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-line btn-sm" data-pin>New PIN</button>${t.user_id === me.user_id ? "" : '<button class="btn btn-ghost btn-sm" data-rm>Remove</button>'}</span></div>`).join("")}</div>
+      <ul style="color:var(--steel);font-size:14px;margin:14px 0 0;padding-left:18px">${Object.values(ROLE_INFO).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
+    <div class="panel"><h2>Add a person</h2>
+      <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:12px">
+        <label class="f">Name<input class="t" id="nName" placeholder="e.g. Jordan, or Shop iPad"></label>
+        <label class="f">Role${roleSel('id="nRole"', "staff")}</label>
+        <label class="f">6-digit PIN<input class="t" id="nPin" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+        <button class="btn btn-red" id="nAdd">Add</button></div>
+      <p style="color:var(--steel);font-size:14px;margin-top:10px">Give the PIN to the person directly. Each PIN has to be different. Avoid repeats and runs like 111111 or 123456.</p></div></div>`;
+  const id = el => el.closest("[data-u]").dataset.u;
+  document.querySelectorAll("[data-role]").forEach(s => s.onchange = async () => { try{ await PBG.teamUpdate(id(s), { role: s.value }); toast("Role changed"); }catch(e){ toast(e.message); } teamPage(); });
+  document.querySelectorAll("[data-active]").forEach(c => c.onchange = async () => { try{ await PBG.teamUpdate(id(c), { active: c.checked }); toast(c.checked ? "Turned on" : "Turned off. Their PIN no longer works."); }catch(e){ toast(e.message); } teamPage(); });
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    if(!await confirmBox("Remove this person?", "Their PIN stops working right away. Orders they handled keep their name.", "Remove")) return;
+    try{ await PBG.teamRemove(id(b)); toast("Removed"); }catch(e){ toast(e.message); } teamPage(); });
+  document.querySelectorAll("[data-pin]").forEach(b => b.onclick = async () => {
+    const p = prompt2("New 6-digit PIN"); const v = await p; if(v == null) return;
+    if(!/^[0-9]{6}$/.test(v)) return toast("The PIN must be 6 digits."); if(weakPin(v)) return toast("Pick a PIN that's harder to guess.");
+    try{ await PBG.teamPin(id(b), v); toast("PIN changed"); }catch(e){ toast(e.message); } teamPage(); });
+  $("#nAdd").onclick = async () => {
+    const n = $("#nName").value.trim(), r = $("#nRole").value, p = $("#nPin").value.trim();
+    if(!n) return toast("Enter a name."); if(!/^[0-9]{6}$/.test(p)) return toast("The PIN must be 6 digits."); if(weakPin(p)) return toast("Pick a PIN that's harder to guess.");
+    $("#nAdd").disabled = true;
+    try{ await PBG.teamAdd(n, r, p); toast(n + " added"); teamPage(); }catch(e){ toast(e.message); $("#nAdd").disabled = false; }
+  };
+}
+function prompt2(title){
+  return new Promise(res => {
+    const sc = document.createElement("div"); sc.className = "scrim";
+    sc.innerHTML = `<div class="modal"><h2>${esc(title)}</h2><input class="t" id="pp" inputmode="numeric" maxlength="6" autocomplete="off" style="margin-top:14px"><div class="acts"><button class="btn btn-line" data-x>Cancel</button><button class="btn btn-red" data-ok>Save</button></div></div>`;
+    document.body.appendChild(sc); const inp = sc.querySelector("#pp"); inp.focus();
+    const done = v => { sc.remove(); res(v); };
+    sc.querySelector("[data-x]").onclick = () => done(null); sc.querySelector("[data-ok]").onclick = () => done(inp.value.trim());
+    inp.onkeydown = e => { if(e.key === "Enter") done(inp.value.trim()); if(e.key === "Escape") done(null); };
+  });
+}
+
+/* ---------- sign out after a stretch of no use (shared counter computers) ---------- */
+(function idleLock(){
+  const mins = +((window.PBG_CONFIG || {}).staffIdleMinutes || 30); let last = Date.now();
+  ["pointerdown","keydown","scroll"].forEach(ev => addEventListener(ev, () => last = Date.now(), { passive: true }));
+  setInterval(async () => { if(me && Date.now() - last > mins * 60000){ await PBG.signOut(); me = null; selected.clear(); bar(); location.hash = ""; signInView(); toast("Signed out after " + mins + " minutes without use."); } }, 30000);
+})();
 
 /* ---------- order list ---------- */
 async function list(){

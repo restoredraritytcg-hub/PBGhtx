@@ -1084,9 +1084,11 @@ function staffSettings(){
   const drawAcct = async () => {
     const el = $("#acct"); if(!el) return;
     const who = await PBG.currentStaff().catch(() => null);
-    el.innerHTML = who ? `<div class="acct"><span>Signed in as <b>${esc(who.name)}</b> (${esc(who.email || "")})</span><button class="btn btn-line btn-sm" id="signOut">Sign out</button></div>`
-      : `<div class="grid g2"><label class="f">Email<input class="t" id="sEmail" type="email" autocomplete="username"></label><label class="f">Password<input class="t" id="sPass" type="password" autocomplete="current-password"></label></div>
-         <div class="acct" style="margin-top:12px"><button class="btn btn-navy btn-sm" id="signIn">Sign in</button><span class="err" id="sErr" hidden></span></div>`;
+    el.innerHTML = who ? `<div class="acct"><span>Connected as <b>${esc(who.name)}</b>${who.email && !/@staff\.pbgcardshtx\.com$/.test(who.email) ? " (" + esc(who.email) + ")" : ""}</span><button class="btn btn-line btn-sm" id="signOut">Sign out</button></div>`
+      : `<div class="grid" style="grid-template-columns:220px auto;align-items:end;gap:10px"><label class="f">PIN for the shop iPad<input class="t" id="sPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+         <button class="btn btn-navy btn-sm" id="signIn" style="min-height:54px">Connect</button></div>
+         <p style="color:var(--steel);font-size:14px;margin-top:8px">The owner creates a "Shop iPad" person with its own PIN in the staff portal (Team page), then enters that PIN here once.</p>
+         <span class="err" id="sErr" hidden></span>`;
   };
   draw(); drawAcct();
   $("#staffBody").onclick = async e => {
@@ -1111,9 +1113,9 @@ function staffSettings(){
       LS.set("pbg.settings", { ...LS.get("pbg.settings", {}), employees: settings.employees }); draw(); drawAcct();
     }
     else if(b.id === "signIn"){
-      const err = $("#sErr"); err.hidden = true; b.disabled = true; b.textContent = "Signing in…";
-      try{ await PBG.init(); await PBG.signIn($("#sEmail").value.trim(), $("#sPass").value); await loadPricing(); toast("Signed in"); drawAcct(); refreshPills(); syncAll(); }
-      catch(x){ err.hidden = false; err.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; }
+      const err = $("#sErr"); err.hidden = true; b.disabled = true; b.textContent = "Connecting…";
+      try{ await PBG.init(); await PBG.signInWithPin($("#sPin").value.trim()); await loadPricing(); toast("iPad connected"); drawAcct(); refreshPills(); syncAll(); }
+      catch(x){ err.hidden = false; err.textContent = x.message; b.disabled = false; b.textContent = "Connect"; }
     }
     else if(b.id === "signOut"){
       if(await confirmBox("Sign this iPad out?", "Submissions will stay on the iPad and won't upload until someone signs in again.", "Sign out")){ await PBG.signOut(); drawAcct(); refreshPills(); }

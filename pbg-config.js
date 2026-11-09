@@ -6,6 +6,7 @@ window.PBG_CONFIG = {
   supabaseAnonKey: "",      // Project Settings > API > anon public key
   statusUrl: "https://pbgcardshtx.com/status.html",  // public customer status page
   staffUrl: "https://pbgcardshtx.com/staff/",         // staff portal (linked from the iPad staff menu)
+  staffIdleMinutes: 30,     // the staff portal signs out after this long without use
 
   // Pickup and unclaimed-card policy (must match the terms customers sign on the iPad).
   pickup: {

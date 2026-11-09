@@ -111,8 +111,8 @@
     async currentStaff(){
       const { data: { session } } = await sb.auth.getSession(); if(!session) return null;
       if(staff && staff.user_id === session.user.id) return staff;
-      const { data, error } = await sb.from("staff").select("user_id,name,role").eq("user_id", session.user.id).maybeSingle();
-      if(error) throw error; staff = data ? { ...data, email: session.user.email } : null; return staff;
+      const { data, error } = await sb.from("staff").select("user_id,name,role,active").eq("user_id", session.user.id).maybeSingle();
+      if(error) throw error; staff = data && data.active !== false ? { ...data, email: session.user.email } : null; return staff;
     },
     async signIn(email, password){
       const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -122,6 +122,32 @@
       return s;
     },
     async signOut(){ staff = null; await sb.auth.signOut(); },
+    async staffAuth(action, body = {}, withSession = false){
+      const headers = { apikey: cfg.supabaseAnonKey, "Content-Type": "application/json" };
+      if(withSession){ const { data: { session } } = await sb.auth.getSession(); if(!session) throw new Error("Sign in again."); headers.Authorization = "Bearer " + session.access_token; }
+      else headers.Authorization = "Bearer " + cfg.supabaseAnonKey;
+      let r;
+      try{ r = await fetch(cfg.supabaseUrl.replace(/\/$/, "") + "/functions/v1/staff-auth", { method: "POST", headers, body: JSON.stringify({ action, ...body }) }); }
+      catch(e){ throw new Error("Can't reach the PBG sign-in service. Check the internet connection."); }
+      const out = await r.json().catch(() => ({}));
+      if(!r.ok) throw new Error(out.error || "Sign-in service error (" + r.status + ")");
+      return out;
+    },
+    async pinSession(tokenHash){
+      const { error } = await sb.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+      if(error) throw new Error("Sign-in failed: " + error.message);
+      staff = null; const s = await live.currentStaff();
+      if(!s || !s.role){ await sb.auth.signOut(); throw new Error("This PIN's account is turned off. Ask the owner."); }
+      return s;
+    },
+    async signInWithPin(pin){ const { token_hash } = await live.staffAuth("login", { pin }); return live.pinSession(token_hash); },
+    async needsSetup(){ return !!(await live.staffAuth("status")).needsSetup; },
+    async setupOwner(name, pin){ const { token_hash } = await live.staffAuth("setup", { name, pin }); return live.pinSession(token_hash); },
+    async team(){ return (await live.staffAuth("team", {}, true)).team; },
+    async teamAdd(name, role, pin){ return live.staffAuth("add", { name, role, pin }, true); },
+    async teamPin(user_id, pin){ return live.staffAuth("pin", { user_id, pin }, true); },
+    async teamUpdate(user_id, patch){ return live.staffAuth("update", { user_id, ...patch }, true); },
+    async teamRemove(user_id){ return live.staffAuth("remove", { user_id }, true); },
     async stages(){
       if(stagesCache) return stagesCache;
       const { data, error } = await sb.from("grader_stages").select("grader,position,code,label,customer_text,notify_customer").order("grader").order("position");
@@ -271,6 +297,37 @@
       dsave(st); return st.staff;
     },
     async signOut(){ const st = dget(); st.staff = null; dsave(st); },
+    demoTeam(){ const st = dget(); if(!st.team){ st.team = [
+        { user_id: "d-owner", name: "Jeff", role: "owner", pin: "482913", active: true, created_at: new Date().toISOString() },
+        { user_id: "d-staff", name: "Jordan", role: "staff", pin: "517204", active: true, created_at: new Date().toISOString() },
+        { user_id: "d-ipad", name: "Shop iPad", role: "staff", pin: "904372", active: true, created_at: new Date().toISOString() },
+        { user_id: "d-rr", name: "Restored Rarity", role: "partner", pin: "260815", active: true, created_at: new Date().toISOString() },
+        { user_id: "d-web", name: "PBG Website", role: "web", pin: "739461", active: true, created_at: new Date().toISOString() } ]; dsave(st); }
+      return st; },
+    async signInWithPin(pin){
+      const st = demo.demoTeam(), m = st.team.find(t => t.active && t.pin === pin);
+      if(!m) throw new Error("That PIN doesn't match anyone at PBG.");
+      st.staff = { user_id: m.user_id, name: m.name, role: m.role, email: "" }; dsave(st); return st.staff;
+    },
+    async needsSetup(){ return false; },
+    async setupOwner(){ throw new Error("Demo mode already has an owner (PIN 482913)."); },
+    async team(){ const st = demo.demoTeam(); if(!st.staff || st.staff.role !== "owner") throw new Error("Only an owner can manage the team."); return clone(st.team.map(({ pin, ...t }) => ({ ...t, pin_set_at: t.created_at }))); },
+    async teamAdd(name, role, pin){ const st = demo.demoTeam();
+      if(!/^[0-9]{6}$/.test(pin)) throw new Error("PIN must be 6 digits."); if(!name.trim()) throw new Error("Enter a name.");
+      if(st.team.some(t => t.pin === pin)) throw new Error("That PIN is already used by someone else. Pick another.");
+      st.team.push({ user_id: uuid(), name: name.trim(), role, pin, active: true, created_at: new Date().toISOString() }); dsave(st); },
+    async teamPin(id, pin){ const st = demo.demoTeam();
+      if(!/^[0-9]{6}$/.test(pin)) throw new Error("PIN must be 6 digits.");
+      if(st.team.some(t => t.pin === pin && t.user_id !== id)) throw new Error("That PIN is already used by someone else. Pick another.");
+      st.team.find(t => t.user_id === id).pin = pin; dsave(st); },
+    async teamUpdate(id, patch){ const st = demo.demoTeam(), t = st.team.find(x => x.user_id === id);
+      const owners = st.team.filter(x => x.role === "owner" && x.active).length;
+      if(t.role === "owner" && owners <= 1 && ((patch.role && patch.role !== "owner") || patch.active === false)) throw new Error("PBG needs at least one owner. Make someone else an owner first.");
+      Object.assign(t, patch); dsave(st); },
+    async teamRemove(id){ const st = demo.demoTeam(), t = st.team.find(x => x.user_id === id);
+      if(st.staff && st.staff.user_id === id) throw new Error("You can't remove yourself.");
+      if(t.role === "owner" && st.team.filter(x => x.role === "owner" && x.active).length <= 1) throw new Error("PBG needs at least one owner.");
+      st.team = st.team.filter(x => x.user_id !== id); dsave(st); },
     async stages(){ return DEFAULT_STAGES; },
     async submitOrder(s){
       const st = dget(); if(st.orders.some(o => o.ticket === s.ticket)) return {};
@@ -329,6 +386,14 @@
     currentStaff: (...a) => impl.currentStaff(...a),
     signIn: (...a) => impl.signIn(...a),
     signOut: (...a) => impl.signOut(...a),
+    signInWithPin: (...a) => impl.signInWithPin(...a),
+    needsSetup: (...a) => impl.needsSetup(...a),
+    setupOwner: (...a) => impl.setupOwner(...a),
+    team: (...a) => impl.team(...a),
+    teamAdd: (...a) => impl.teamAdd(...a),
+    teamPin: (...a) => impl.teamPin(...a),
+    teamUpdate: (...a) => impl.teamUpdate(...a),
+    teamRemove: (...a) => impl.teamRemove(...a),
     stages: (...a) => impl.stages(...a),
     submitOrder: (...a) => impl.submitOrder(...a),
     listOrders: (...a) => impl.listOrders(...a),

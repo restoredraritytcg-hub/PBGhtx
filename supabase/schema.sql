@@ -509,3 +509,57 @@ create policy site_media_update on storage.objects for update to authenticated
 drop policy if exists site_media_delete on storage.objects;
 create policy site_media_delete on storage.objects for delete to authenticated
   using (bucket_id = 'site-media' and public.can_edit_site());
+
+-- =====================================================================
+-- Staff portal PIN sign-in.
+-- Each person signs in to the staff portal with their own 6-digit PIN.
+-- The Edge Function `staff-auth` checks the PIN and hands back a normal
+-- Supabase session, so every security rule above still applies by role.
+-- PINs are stored bcrypt-hashed in a table no browser can read (RLS on,
+-- no policies); only the Edge Function (service role) uses it.
+-- Owners add people, change PINs and remove people from the portal's Team page.
+-- =====================================================================
+alter table public.staff add column if not exists active boolean not null default true;
+
+create table if not exists public.staff_pins (
+  user_id    uuid primary key references public.staff(user_id) on delete cascade,
+  pin_hash   text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.staff_pins enable row level security;   -- no policies: browsers can't read or write it
+
+create table if not exists public.pin_attempts (
+  id  bigserial primary key,
+  ip  text,
+  ok  boolean not null,
+  at  timestamptz not null default now()
+);
+create index if not exists pin_attempts_at_idx on public.pin_attempts (at desc);
+alter table public.pin_attempts enable row level security; -- no policies
+
+-- staff_role() only counts active people
+create or replace function public.staff_role() returns text
+language sql stable security definer set search_path = public as $$
+  select role from public.staff where user_id = auth.uid() and active
+$$;
+
+-- Used only by the staff-auth Edge Function (service role).
+create or replace function public.staff_pin_match(p_pin text)
+returns uuid language sql stable security definer set search_path = public, extensions as $$
+  select p.user_id from public.staff_pins p join public.staff s on s.user_id = p.user_id
+   where s.active and p.pin_hash = crypt(p_pin, p.pin_hash) limit 1
+$$;
+create or replace function public.staff_pin_set(p_user uuid, p_pin text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if p_pin !~ '^[0-9]{6}$' then raise exception 'PIN must be 6 digits'; end if;
+  if exists (select 1 from public.staff_pins where user_id <> p_user and pin_hash = crypt(p_pin, pin_hash)) then
+    raise exception 'That PIN is already used by someone else. Pick another.';
+  end if;
+  insert into public.staff_pins (user_id, pin_hash) values (p_user, crypt(p_pin, gen_salt('bf', 10)))
+  on conflict (user_id) do update set pin_hash = excluded.pin_hash, updated_at = now();
+end $$;
+revoke all on function public.staff_pin_match(text) from public, anon, authenticated;
+revoke all on function public.staff_pin_set(uuid, text) from public, anon, authenticated;
+grant execute on function public.staff_pin_match(text) to service_role;
+grant execute on function public.staff_pin_set(uuid, text) to service_role;

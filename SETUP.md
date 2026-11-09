@@ -23,21 +23,18 @@ Everything runs in **demo mode** with sample orders until you fill in `pbg-confi
 
 1. Sign in at supabase.com and create a project named "PBG" (the free plan is fine).
 2. **SQL Editor > New query**: paste all of `supabase/schema.sql` and click **Run**.
-3. **Authentication > Sign In / Providers > Email**: turn **off** "Allow new users to sign up", so only accounts you create can sign in.
-4. **Authentication > Users > Add user** (with "Auto confirm" on). Create:
-   - `ipad@pbgcardshtx.com`: the account the shop iPad connects with
-   - your own account, plus any PBG manager who should use the staff portal
-   - a Restored Rarity account for the partner view
-   - optional: a website-only account for whoever at PBG updates the site (hours, promos, events)
-5. Copy each user's ID from the Users list, then in the SQL Editor run:
+3. **Authentication > Sign In / Providers > Email**: turn **off** "Allow new users to sign up", so nobody can create an account from outside.
+4. **Deploy the PIN sign-in function** (needs the Supabase CLI once: `npm i -g supabase`, then `supabase login` and `supabase link --project-ref <your project ref>` from this repo's folder):
 
-```sql
-insert into public.staff (user_id, name, role) values
-  ('PASTE-IPAD-USER-ID',    'Shop iPad',        'staff'),
-  ('PASTE-YOUR-USER-ID',    'Jeff',             'owner'),
-  ('PASTE-RR-USER-ID',      'Restored Rarity',  'partner'),
-  ('PASTE-WEB-USER-ID',     'PBG Website',      'web');      -- optional
+```bash
+supabase functions deploy staff-auth --no-verify-jwt
 ```
+
+   It needs no secrets. It checks PINs, locks out a device after 5 wrong PINs in 15 minutes (and pauses PIN sign-in for everyone after 30 wrong PINs in 15 minutes), and lets owners manage the team.
+5. **Create the owner.** After section 2 (Fill in the config) is done, open `/staff/`. With no owner yet, it shows **Set up the owner**: enter your name and a 6-digit PIN. This screen disappears once an owner exists.
+6. **Add everyone else** from the portal's **Team** page (owner only): name, role and a 6-digit PIN each. Add a person called **Shop iPad** with role Staff; its PIN connects the iPad (iPad > Staff > Settings > Connect this iPad). No Supabase dashboard work is needed for people after this.
+
+PINs are stored bcrypt-hashed in `staff_pins`, a table no browser can read. Each PIN must be unique. Turning someone off (Team > untick "Can sign in") or removing them stops their PIN immediately. The portal signs out after 30 minutes without use (`staffIdleMinutes` in `pbg-config.js`). Accounts made the old way, with an email and password in Supabase, can still use **Sign in with email instead**.
 
 Roles: `owner` can do everything, including editing stage lists. `staff` handles all orders. `partner` (Restored Rarity) sees only orders with prep work, can set "With Restored Rarity" and "Prep complete", and can enter evaluation results and repair quotes. Partners never see customer phone numbers or totals. `web` only sees the **Website** section of the staff portal: no orders, customers or payouts. Owners see both.
 
@@ -106,7 +103,7 @@ insert into public.app_settings values ('notify_secret', 'THE-SAME-SECRET')
 3. **Settings**:
    - Set the real prices: partner rates for cleaning and evaluation, and the grading levels with their max declared values. The "Prices not set" badge disappears after you save.
    - **Employees**: add each employee's name and a 4-digit code. Codes are stored scrambled on the iPad. Until at least one employee exists, the manager PIN accepts cards.
-   - **Connect this iPad**: sign in once with the `ipad@` account. It stays connected.
+   - **Connect this iPad**: enter the Shop iPad PIN from the Team page once. It stays connected.
    - Review the terms and change the manager PIN.
 4. Lock the iPad to the app with **Settings > Accessibility > Guided Access** (triple-click to start).
 
