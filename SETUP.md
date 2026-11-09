@@ -25,7 +25,7 @@ Everything runs in **demo mode** with sample orders until you fill in `pbg-confi
 2. **SQL Editor > New query**: paste all of `supabase/schema.sql` and click **Run**.
 3. **Authentication > Sign In / Providers > Email**: turn **off** "Allow new users to sign up", so only accounts you create can sign in.
 4. **Authentication > Users > Add user** (with "Auto confirm" on). Create:
-   - `ipad@<pbg domain>`: the account the shop iPad connects with
+   - `ipad@pbgcardshtx.com`: the account the shop iPad connects with
    - your own account, plus any PBG manager who should use the staff portal
    - a Restored Rarity account for the partner view
 5. Copy each user's ID from the Users list, then in the SQL Editor run:
@@ -47,8 +47,8 @@ Roles: `owner` can do everything, including editing stage lists. `staff` handles
 window.PBG_CONFIG = {
   supabaseUrl: "https://xxxx.supabase.co",
   supabaseAnonKey: "eyJ...",
-  statusUrl: "https://<pbg domain>/status.html",
-  staffUrl: "https://<pbg domain>/staff/"
+  statusUrl: "https://pbgcardshtx.com/status.html",
+  staffUrl: "https://pbgcardshtx.com/staff/"
 };
 ```
 
@@ -56,9 +56,9 @@ The anon key is meant to be public. The security rules in `schema.sql` decide wh
 
 ## 3. Host the site and the iPad app
 
-- This repo is served by GitHub Pages (Settings > Pages > Deploy from a branch > `main` / root). Until PBG's domain is connected it lives at `https://restoredraritytcg-hub.github.io/PBGhtx/`.
+- This repo is served by GitHub Pages (Settings > Pages > Deploy from a branch > `main` / root). The domain is `https://pbgcardshtx.com` (set by the `CNAME` file in this repo).
   - Website: `/`  ·  Customer status page: `/status.html`  ·  Staff portal: `/staff/` (not linked from the public site)  ·  iPad app: `/intake/`
-- **Custom domain**: add it under Settings > Pages (GitHub creates a `CNAME` file), point the domain's DNS at GitHub Pages, tick "Enforce HTTPS", then update `statusUrl` and `staffUrl` in `pbg-config.js`.
+- **Domain DNS** (at the registrar for pbgcardshtx.com): four `A` records for `@` pointing to 185.199.108.153, 185.199.109.153, 185.199.110.153 and 185.199.111.153, and a `CNAME` for `www` pointing to `restoredraritytcg-hub.github.io`. Then in Settings > Pages confirm the custom domain shows `pbgcardshtx.com` and tick "Enforce HTTPS" once the certificate is ready.
 - **iPad**: open `/intake/` in Safari, Share > Add to Home Screen. It must be served over https to install and work offline.
 - When you change app files later, bump `VERSION` at the top of `intake/sw.js` so the iPad picks up the update.
 
@@ -74,11 +74,11 @@ supabase link --project-ref YOUR-PROJECT-REF
 supabase secrets set \
   RESEND_API_KEY=re_xxx \
   PBG_NOTIFY_SECRET=$(openssl rand -hex 24) \
-  FROM_EMAIL="PBG Cards & Collectibles <orders@<pbg domain>>" \
+  FROM_EMAIL="PBG Cards & Collectibles <orders@pbgcardshtx.com>" \
   REPLY_TO=<shop gmail> \
   SHOP_EMAIL=<shop gmail> \
   PARTNER_EMAIL=restoredraritytcg@gmail.com \
-  STATUS_URL=https://<pbg domain>/status.html
+  STATUS_URL=https://pbgcardshtx.com/status.html
 supabase functions deploy pbg-notify --no-verify-jwt
 ```
 

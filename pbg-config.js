@@ -4,8 +4,8 @@
 window.PBG_CONFIG = {
   supabaseUrl: "",          // e.g. "https://abcdefgh.supabase.co"
   supabaseAnonKey: "",      // Project Settings > API > anon public key
-  statusUrl: "https://restoredraritytcg-hub.github.io/PBGhtx/status.html",  // public customer status page
-  staffUrl: "https://restoredraritytcg-hub.github.io/PBGhtx/staff/",         // staff portal (linked from the iPad staff menu)
+  statusUrl: "https://pbgcardshtx.com/status.html",  // public customer status page
+  staffUrl: "https://pbgcardshtx.com/staff/",         // staff portal (linked from the iPad staff menu)
 
   // Pickup and unclaimed-card policy (must match the terms customers sign on the iPad).
   pickup: {
