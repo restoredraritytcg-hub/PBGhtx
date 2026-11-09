@@ -12,6 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js"></script>
 <script src="../pbg-api.js"></script>
+<script src="../site-content.js"></script>
+<script src="site-editor.js"></script>
 <style>
 :root{--ink:#141414;--red:#E31B23;--paper:#F4F4F2;--white:#fff;--steel:#666D7A;--line:#DADDE2;--green:#1C7C47;--amber:#9A5B00;--violet:#5B3FA8}
 *{box-sizing:border-box}
@@ -143,7 +145,7 @@ label.f .t{margin-top:4px}
   <span class="t">Staff portal</span>
   <div class="r" id="barRight"></div>
 </header>
-<div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Sign in with any email; use an email containing "restored" to see the Restored Rarity partner view.</div>
+<div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Sign in with any email; use an email containing "restored" to see the Restored Rarity partner view, or one starting with "web" for the website-only editor.</div>
 <div id="app"></div>
 
 <script>
@@ -198,15 +200,16 @@ async function boot(){
   $("#demoBar").hidden = PBG.mode !== "demo";
   try{ await PBG.init(); me = await PBG.currentStaff(); }catch(e){ $("#app").innerHTML = `<div class="wrap"><div class="panel"><h2>Can't reach the order system</h2><p style="margin-top:8px">${esc(e.message)}</p></div></div>`; return; }
   if(!me) return signInView();
-  stages = await PBG.stages();
+  if(me.role !== "web") stages = await PBG.stages();
   bar(); route();
 }
 function bar(){
-  $("#barRight").innerHTML = me ? `${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a><a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  $("#barRight").innerHTML = me ? `${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
   const o = $("#out"); if(o) o.onclick = async () => { await PBG.signOut(); me = null; selected.clear(); view = { group: "open", grader: "all", q: "" }; bar(); location.hash = ""; signInView(); };
 }
 window.addEventListener("hashchange", () => me && route());
 function route(){
+  if(me.role === "web" || (me.role === "owner" && location.hash.startsWith("#site"))) return sitePage(location.hash.replace(/^#site\/?/, ""));
   if(location.hash === "#payouts" && ["owner","partner"].includes(me.role)) return payouts();
   const id = location.hash.replace(/^#order-/, ""); if(location.hash.startsWith("#order-") && id) detail(id); else list();
 }
@@ -218,7 +221,7 @@ function signInView(){
     <label class="f">Password<input class="t" id="pw" type="password" autocomplete="current-password" required></label>
     <button class="btn btn-red btn-lg" id="go">Sign in</button><p class="err" id="er" hidden></p></form></div>`;
   $("#f").onsubmit = async e => { e.preventDefault(); const b = $("#go"), er = $("#er"); b.disabled = true; b.textContent = "Signing in…"; er.hidden = true;
-    try{ me = await PBG.signIn($("#em").value.trim(), $("#pw").value); stages = await PBG.stages(); bar(); route(); }
+    try{ me = await PBG.signIn($("#em").value.trim(), $("#pw").value); if(me.role !== "web") stages = await PBG.stages(); bar(); route(); }
     catch(x){ er.hidden = false; er.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; } };
 }
 

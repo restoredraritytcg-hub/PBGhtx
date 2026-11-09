@@ -177,6 +177,21 @@
     },
     photoUrl(path){ if(!path) return null; if(path.startsWith("data:")) return path; return sb.storage.from("card-photos").getPublicUrl(path).data.publicUrl; },
     async payouts(from, to){ const { data, error } = await sb.rpc("payout_report", { p_from: from, p_to: to }); if(error) throw new Error(error.message); return data; },
+    async getSite(){
+      const { data, error } = await sb.from("site_content").select("key,value,updated_at,updated_by");
+      if(error) throw new Error(error.message);
+      return Object.fromEntries(data.map(r => [r.key, { value: r.value, updated_at: r.updated_at, updated_by: r.updated_by }]));
+    },
+    async saveSite(key, value){
+      const { error } = await sb.from("site_content").upsert({ key, value }, { onConflict: "key" });
+      if(error) throw new Error(error.message);
+    },
+    async uploadSiteImage(dataUrl){
+      const path = `${new Date().toISOString().slice(0,10)}/${uuid()}.jpg`;
+      const { error } = await sb.storage.from("site-media").upload(path, dataUrlToBlob(dataUrl), { contentType: "image/jpeg", upsert: false });
+      if(error) throw new Error("Photo upload failed: " + error.message);
+      return sb.storage.from("site-media").getPublicUrl(path).data.publicUrl;
+    },
     async linkRestoredRarity(ticket, code){ const { error } = await sb.from("orders").update({ rr_code: code }).eq("ticket", ticket); if(error) throw new Error(error.message); },
     async getPricing(){ const { data, error } = await sb.from("pricing").select("rules,graders,updated_at,updated_by").eq("id", 1).maybeSingle(); if(error) throw new Error(error.message); return data; },
     async savePricing(rules, graders){
@@ -244,12 +259,15 @@
   function dsave(s){ try{ localStorage.setItem(DKEY, JSON.stringify(s)); }catch(e){ demoMem = s; } }
   let demoMem = null; const dget = () => demoMem || dload();
   const clone = o => JSON.parse(JSON.stringify(o));
+  const SITE_KEY = "pbg.site.v1";
+  function siteDemo(){ try{ return JSON.parse(localStorage.getItem(SITE_KEY)) || {}; }catch(e){ return {}; } }
   const demo = {
     async init(){},
     async currentStaff(){ return dget().staff; },
     async signIn(email, password){
       if(!email || !password) throw new Error("Enter an email and password.");
-      const st = dget(); st.staff = { user_id: "demo", name: /restored/i.test(email) ? "Restored Rarity" : "Demo Staff", role: /restored/i.test(email) ? "partner" : "owner", email };
+      const st = dget(); const role = /restored/i.test(email) ? "partner" : /^web|website/i.test(email) ? "web" : "owner";
+      st.staff = { user_id: "demo", name: { partner: "Restored Rarity", web: "Website Editor", owner: "Demo Staff" }[role], role, email };
       dsave(st); return st.staff;
     },
     async signOut(){ const st = dget(); st.staff = null; dsave(st); },
@@ -289,6 +307,13 @@
         .map(o => ({ ticket: o.ticket, created_at: o.created_at, grader: o.grader, tier: o.tier, current_stage: o.current_stage, graded_count: o.graded_count || 0,
           eval_count: o.eval_count || 0, prep_count: o.prep_count || 0, gem_count: o.gem_count || 0, gem_fees: o.gem_fees || 0, mag_count: o.mag_count || 0, mag_fees: o.mag_fees || 0, total: o.total, tax: o.tax || 0, grader_fees: o.grader_fees || 0, pbg_share: o.pbg_share || 0, rr_share: o.rr_share || 0 }));
     },
+    async getSite(){ return clone(siteDemo()); },
+    async saveSite(key, value){
+      const st = dget(); if(!st.staff || !["owner","web"].includes(st.staff.role)) throw new Error("Only the owner or a website account can edit the website");
+      const all = siteDemo(); all[key] = { value, updated_at: new Date().toISOString(), updated_by: st.staff.name };
+      try{ localStorage.setItem(SITE_KEY, JSON.stringify(all)); }catch(e){ throw new Error("This browser is out of space for demo photos. Use smaller photos or reset the demo."); }
+    },
+    async uploadSiteImage(dataUrl){ return dataUrl; },   // demo: the photo is kept inline
     async linkRestoredRarity(ticket, code){ const st = dget(), o = st.orders.find(x => x.ticket === ticket); if(o){ o.rr_code = code; dsave(st); } },
     async getPricing(){ const p = dget().pricing; return p ? clone(p) : null; },
     async savePricing(rules, graders){ const st = dget(); st.pricing = { rules, graders, updated_at: new Date().toISOString(), updated_by: (st.staff && st.staff.name) || "iPad" }; dsave(st); },
@@ -317,6 +342,9 @@
     getPricing: (...a) => impl.getPricing(...a),
     linkRestoredRarity: (...a) => impl.linkRestoredRarity(...a),
     savePricing: (...a) => impl.savePricing(...a),
+    getSite: (...a) => impl.getSite(...a),
+    saveSite: (...a) => impl.saveSite(...a),
+    uploadSiteImage: (...a) => impl.uploadSiteImage(...a),
     demoTokens: () => impl.demoTokens ? impl.demoTokens() : [],
     resetDemo: () => impl.resetDemo && impl.resetDemo(),
     stageList, graderName, statusUrl, newToken: uuid, DEFAULT_STAGES

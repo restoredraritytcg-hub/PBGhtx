@@ -28,16 +28,18 @@ Everything runs in **demo mode** with sample orders until you fill in `pbg-confi
    - `ipad@pbgcardshtx.com`: the account the shop iPad connects with
    - your own account, plus any PBG manager who should use the staff portal
    - a Restored Rarity account for the partner view
+   - optional: a website-only account for whoever at PBG updates the site (hours, promos, events)
 5. Copy each user's ID from the Users list, then in the SQL Editor run:
 
 ```sql
 insert into public.staff (user_id, name, role) values
   ('PASTE-IPAD-USER-ID',    'Shop iPad',        'staff'),
   ('PASTE-YOUR-USER-ID',    'Jeff',             'owner'),
-  ('PASTE-RR-USER-ID',      'Restored Rarity',  'partner');
+  ('PASTE-RR-USER-ID',      'Restored Rarity',  'partner'),
+  ('PASTE-WEB-USER-ID',     'PBG Website',      'web');      -- optional
 ```
 
-Roles: `owner` can do everything, including editing stage lists. `staff` handles all orders. `partner` (Restored Rarity) sees only orders with prep work, can set "With Restored Rarity" and "Prep complete", and can enter evaluation results and repair quotes. Partners never see customer phone numbers or totals.
+Roles: `owner` can do everything, including editing stage lists. `staff` handles all orders. `partner` (Restored Rarity) sees only orders with prep work, can set "With Restored Rarity" and "Prep complete", and can enter evaluation results and repair quotes. Partners never see customer phone numbers or totals. `web` only sees the **Website** section of the staff portal: no orders, customers or payouts. Owners see both.
 
 ## 2. Fill in the config
 
@@ -156,6 +158,22 @@ When "Pokémon" is picked on a card, typing a name or number (like "charizard 4/
 - The iPad loads it live from `https://restoredraritytcg.com/portal/cards.json`, which updates itself on the 1st and 15th. If that's unreachable, it uses the GitHub copy, then the `cards.json` bundled with the app (for offline use).
 - Don't move, rename or change the format of `portal/cards.json` in the Restored Rarity repo without updating this app (`intake/cardsearch.js`).
 - Sports and other TCG cards are typed in by hand. The list has Pokémon cards only.
+
+## 10. Editing the website (staff portal > Website)
+
+Owners and `web` accounts get a **Website** button in the staff portal (`/staff/#site`). Each tab saves straight to the live site, no code or GitHub needed:
+
+| Tab | Changes |
+|---|---|
+| Business info | Phone, address, Instagram handle, hours for each day, an hours note (holidays). Drives the call buttons, "Open now", the hours strip, the Visit section, map and footer |
+| Announcement bar | A strip across the top of the site, with optional link, color and an auto-hide date |
+| Homepage top | Headline, intro, the "Just in" badge and the three fanned photos |
+| Promotions | Any number of deals with start/end dates, a flyer photo and a Show switch. Expired ones hide themselves |
+| Events | Tournaments, release nights, meetups. Upcoming ones show in an "Events at the shop" section; past ones drop off |
+| In the shop | The "What's in the cases" intro, two photos with captions and the four categories |
+| Instagram grid | Six photos, each linking to its Instagram post |
+
+Photos are resized in the browser and stored in the `site-media` bucket. Grading prices on the site (handling fee, evaluation, prep, gem tiers, mag case) always match the pricing set on the iPad (Staff > Settings), so they're not edited here. The text in `index.html` stays as the fallback: add `?nocms` to the site address to see it.
 
 ## 9. Changing grading stages
 

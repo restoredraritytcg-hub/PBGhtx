@@ -172,13 +172,26 @@ section{padding:96px 0}
 .map .fallback{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:6px;padding:24px}
 .map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.3) contrast(1.05)}
 
+#announce{background:var(--red);color:#fff;text-align:center;font-weight:800;font-size:15px;padding:10px 16px}
+#announce.black{background:#000;border-bottom:1px solid var(--line)}
+#announce.gold{background:#F5C518;color:#111}
+#announce a{color:inherit;text-decoration:underline;margin-left:8px}
+.promo + .promo{padding-top:0}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:28px}
+.event{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.event img{aspect-ratio:16/10;object-fit:cover;width:100%;height:auto}
+.event .b{padding:18px 20px}
+.event .when{color:var(--red);font-weight:900;font-style:italic;text-transform:uppercase;font-size:14px;letter-spacing:.02em}
+.event h3{margin-top:6px}
+.event p{color:var(--smoke);margin-top:8px;font-size:16px}
+.hours-note{margin-top:6px;color:#F5C518;font-weight:700}
 footer{border-top:1px solid var(--line);padding:44px 0;font-size:15px;color:var(--smoke)}
 footer .wrap{display:flex;flex-wrap:wrap;gap:24px 48px;align-items:center;justify-content:space-between}
 footer img{height:64px;width:auto}
 </style>
 </head>
 <body>
-
+<div id="announce" hidden></div>
 <header class="top">
   <div class="wrap">
     <a class="logo" href="#" aria-label="PBG Cards & Collectibles HTX home"><img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX" width="760" height="390"></a>
@@ -196,15 +209,15 @@ footer img{height:64px;width:auto}
 <div class="hero">
   <div class="wrap">
     <div>
-      <h1>Sports cards and Pokémon, right off I-45 in Spring.</h1>
-      <p class="lede">Buy, sell and trade singles, graded slabs and sealed product. Drop off your cards for PSA, CGC, BGS or TAG grading at the counter, and we'll handle the rest. New boxes hit the shelves every week.</p>
+      <h1 id="heroTitle">Sports cards and Pokémon, right off I-45 in Spring.</h1>
+      <p class="lede" id="heroIntro">Buy, sell and trade singles, graded slabs and sealed product. Drop off your cards for PSA, CGC, BGS or TAG grading at the counter, and we'll handle the rest. New boxes hit the shelves every week.</p>
       <div class="actions">
         <a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Get directions</a>
         <a class="btn btn-white" href="#grading">Submit cards for grading</a>
       </div>
       <p class="status"><i id="dot"></i><span id="status">Open daily, 11 AM to 7 PM</span></p>
     </div>
-    <div class="fan" aria-label="New arrivals at PBG">
+    <div class="fan" id="heroFan" aria-label="New arrivals at PBG">
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-heritage.jpg" alt="2026 Topps Heritage Football hobby boxes, in stock now" width="590" height="731"></a>
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-flagship.jpg" alt="Topps Flagship basketball hobby and jumbo boxes, now in stock" width="590" height="731"></a>
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/bowman-best.jpg" alt="2026 Bowman Best hobby boxes, now in stock" width="590" height="731"></a>
@@ -216,7 +229,7 @@ footer img{height:64px;width:auto}
 <div class="strip">
   <div class="wrap">
     <a href="#grading">Grading drop-off at the counter</a>
-    <span>Open every day, 11 AM to 7 PM</span>
+    <span id="stripHours">Open every day, 11 AM to 7 PM</span>
     <a href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">25170 I-45 N, Unit 9, Spring, TX</a>
     <a href="tel:+18326107081">832-610-7081</a>
   </div>
@@ -235,7 +248,7 @@ footer img{height:64px;width:auto}
         <li><h3>We submit to the grader</h3><p>Your cards go out with our next submission at the service level you picked.</p></li>
         <li><h3>Track it, then pick up your slabs</h3><p>Follow every grading stage from the link on your receipt. Bring your ticket number and a photo ID to pick up. Storage is free for 30 days after we tell you your cards are ready; after that a $1 per card per day holding fee applies.</p></li>
       </ol>
-      <p class="graders">We submit to PSA, CGC, Beckett (BGS) and TAG. Grading prices are the company's current fee plus a $20 PBG handling fee per card. Cards worth over $4,000 get our gem service, with a magnetic case to display the slab: $40 over $4,000, $60 over $6,000, $80 over $8,000 and $100 over $10,000. Want your slab ready to display? Add a matching magnetic slab case for $15 a card with any grading submission, and we'll hand it to you with your slab at pickup. Ask at the counter for service levels and turnaround.</p>
+      <p class="graders" id="gradingPrices">We submit to PSA, CGC, Beckett (BGS) and TAG. Grading prices are the company's current fee plus a $20 PBG handling fee per card. Cards worth over $4,000 get our gem service, with a magnetic case to display the slab: $40 over $4,000, $60 over $6,000, $80 over $8,000 and $100 over $10,000. Want your slab ready to display? Add a matching magnetic slab case for $15 a card with any grading submission, and we'll hand it to you with your slab at pickup. Ask at the counter for service levels and turnaround.</p>
       <p class="graders"><b style="color:#fff">Already dropped off?</b> Scan the QR code on your receipt to see which grading stage your cards are in.</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px"><a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Bring your cards in</a><a class="btn btn-white" href="tel:+18326107081">Questions? Call us</a></div>
     </div>
@@ -244,8 +257,8 @@ footer img{height:64px;width:auto}
       <h3 id="rr">Partner pricing with Restored Rarity TCG</h3>
       <p class="by">Your cards are evaluated and prepped by professionals in the card restoration space who work to the requirements of PSA, CGC, Beckett and TAG. Drop your cards off at PBG and we send them over, so you pay the partner rate and never ship them yourself.</p>
       <ul>
-        <li><b>Full evaluation with magnification <em class="deal">$17 per card</em></b><span>A professional pre-grader inspects centering, corners, edges and surface under magnification, then tells you what grade range to expect and whether the card is worth the grading fee.</span></li>
-        <li><b>Prep <em class="deal">$7 per card</em></b><span>Cleaning and grading prep by a restoration professional who knows what each grading company accepts, so your card goes in looking its best.</span></li>
+        <li><b>Full evaluation with magnification <em class="deal" id="evalDeal">$17 per card</em></b><span>A professional pre-grader inspects centering, corners, edges and surface under magnification, then tells you what grade range to expect and whether the card is worth the grading fee.</span></li>
+        <li><b>Prep <em class="deal" id="prepDeal">$7 per card</em></b><span>Cleaning and grading prep by a restoration professional who knows what each grading company accepts, so your card goes in looking its best.</span></li>
       </ul>
       <div class="dropoff"><b>Authorized Restored Rarity drop-off</b><span>Need a card repaired or restored? PBG is an authorized drop-off location for Restored Rarity. Check it in at the counter and it goes straight to Restored Rarity, who send you their own quote and tracking link.</span></div>
       <p class="note">PBG partner pricing. More about Restored Rarity at <a href="https://restoredraritytcg.com">restoredraritytcg.com</a>.</p>
@@ -257,14 +270,14 @@ footer img{height:64px;width:auto}
   <div class="wrap">
     <div class="head">
       <h2>What's in the cases</h2>
-      <p>Come dig through the singles, crack a pack at the counter, or find the slab you've been chasing.</p>
+      <p id="shopIntro">Come dig through the singles, crack a pack at the counter, or find the slab you've been chasing.</p>
     </div>
     <div class="shop">
-      <div class="photos">
+      <div class="photos" id="shopPhotos">
         <figure><img src="assets/pokemon-case.jpg" alt="Display case full of Charizard cards in toploaders with PBG price tags" loading="lazy"><figcaption>Charizards in the case, priced and ready.</figcaption></figure>
         <figure><img src="assets/riftbound-shelf.jpg" alt="Riftbound League of Legends booster boxes stacked on a glass case" loading="lazy"><figcaption>Riftbound boxes on the counter.</figcaption></figure>
       </div>
-      <div class="cats">
+      <div class="cats" id="shopCats">
         <div><h3>Sports cards</h3><p>Football, basketball, baseball and more. Hobby boxes, singles, rookies and autos.</p></div>
         <div><h3>Pokémon TCG</h3><p>Vintage to modern singles, chase cards and the newest sets.</p></div>
         <div><h3>Graded cards</h3><p>Slabs from PSA, CGC, Beckett, TAG and more.</p></div>
@@ -290,6 +303,7 @@ footer img{height:64px;width:auto}
   </div>
 </section>
 
+<div id="promos">
 <section class="promo">
   <div class="wrap">
     <div>
@@ -300,6 +314,14 @@ footer img{height:64px;width:auto}
     <img src="assets/gameday.jpg" alt="Game Day Giveaway flyer: free pack of football cards for wearing team gear" loading="lazy" width="731" height="731">
   </div>
 </section>
+</div>
+
+<section id="events" hidden>
+  <div class="wrap">
+    <div class="head"><h2>Events at the shop</h2><p>Tournaments, release nights and meetups. Come hang out.</p></div>
+    <div class="events" id="eventList"></div>
+  </div>
+</section>
 
 
 <section>
@@ -308,7 +330,7 @@ footer img{height:64px;width:auto}
       <h2>On the feed</h2>
       <a class="btn btn-white" href="https://www.instagram.com/pbgcardshophtx/">Follow @pbgcardshophtx</a>
     </div>
-    <div class="ig-grid">
+    <div class="ig-grid" id="igGrid">
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/gameday.jpg" alt="Game Day Giveaway" loading="lazy"></a>
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/bowman-best.jpg" alt="Bowman Best in stock" loading="lazy"></a>
       <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-flagship.jpg" alt="Topps Flagship in stock" loading="lazy"></a>
@@ -323,7 +345,7 @@ footer img{height:64px;width:auto}
   <div class="wrap visit">
     <div class="facts">
       <h2>Come see us</h2>
-      <dl>
+      <dl id="visitFacts">
         <dt>Address</dt><dd>25170 I-45 N, Unit 9<br>Spring, TX 77386</dd>
         <dt>Hours</dt><dd>Monday to Sunday, 11 AM to 7 PM</dd>
         <dt>Phone</dt><dd><a href="tel:+18326107081">832-610-7081</a></dd>
@@ -346,21 +368,12 @@ footer img{height:64px;width:auto}
 <footer>
   <div class="wrap">
     <img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX" loading="lazy">
-    <p>25170 I-45 N, Unit 9, Spring, TX 77386<br>Open daily 11 AM to 7 PM. 832-610-7081</p>
+    <p id="footInfo">25170 I-45 N, Unit 9, Spring, TX 77386<br>Open daily 11 AM to 7 PM. 832-610-7081</p>
     <a href="https://restoredraritytcg.com" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img src="assets/restored-rarity-logo.jpg" alt="" style="height:56px;width:auto;border-radius:8px" loading="lazy"><span>Authorized drop-off for<br><u>Restored Rarity TCG</u></span></a>
   </div>
 </footer>
 
-<script>
-(function(){
-  try{
-    const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date());
-    const h = +parts.find(p=>p.type==='hour').value % 24, m = +parts.find(p=>p.type==='minute').value, t = h*60+m;
-    const s = document.getElementById('status'), d = document.getElementById('dot');
-    if(t >= 660 && t < 1140){ s.textContent = 'Open now until 7 PM'; d.classList.add('on'); }
-    else s.textContent = t < 660 ? 'Opens today at 11 AM' : 'Opens tomorrow at 11 AM';
-  }catch(e){}
-})();
-</script>
+<script src="pbg-config.js"></script>
+<script src="site-content.js"></script>
 </body>
 </html>

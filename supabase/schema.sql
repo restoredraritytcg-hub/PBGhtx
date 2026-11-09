@@ -12,13 +12,17 @@ create extension if not exists pgcrypto;
 --   role 'owner'   full access, can manage stages
 --   role 'staff'   full access to orders
 --   role 'partner' Restored Rarity: sees and updates orders with prep work
+--   role 'web'     website editor only: Website section of the staff portal, no orders
 -- ---------------------------------------------------------------------
 create table if not exists public.staff (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   name       text not null,
-  role       text not null default 'staff' check (role in ('owner','staff','partner')),
+  role       text not null default 'staff',
   created_at timestamptz not null default now()
 );
+
+alter table public.staff drop constraint if exists staff_role_check;
+alter table public.staff add constraint staff_role_check check (role in ('owner','staff','partner','web'));
 
 create or replace function public.staff_role() returns text
 language sql stable security definer set search_path = public as $$
@@ -450,3 +454,58 @@ end $$;
 drop trigger if exists orders_apply_split on public.orders;
 create trigger orders_apply_split before insert on public.orders
   for each row execute function public.orders_apply_split();
+
+
+-- =====================================================================
+-- Website content (staff portal > Website). One row per section.
+-- Owners and 'web' accounts can edit; anyone can read through site_get(),
+-- which the public website calls on every page load. Sections that were
+-- never saved are missing and the site shows the text built into index.html.
+-- =====================================================================
+create or replace function public.can_edit_site() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(public.staff_role() in ('owner','web'), false)
+$$;
+
+create table if not exists public.site_content (
+  key        text primary key check (key in ('business','announcement','hero','promos','events','shop','instagram')),
+  value      jsonb not null,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+alter table public.site_content enable row level security;
+drop policy if exists site_edit on public.site_content;
+create policy site_edit on public.site_content for all to authenticated
+  using (public.can_edit_site()) with check (public.can_edit_site());
+
+create or replace function public.site_content_touch() returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  new.updated_by := coalesce((select name from public.staff where user_id = auth.uid()), auth.jwt() ->> 'email', new.updated_by);
+  return new;
+end $$;
+drop trigger if exists site_content_touch on public.site_content;
+create trigger site_content_touch before insert or update on public.site_content
+  for each row execute function public.site_content_touch();
+
+-- Everything the public website needs: the saved sections plus the public grading prices.
+create or replace function public.site_get()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_object_agg(key, value) from public.site_content), '{}'::jsonb)
+      || jsonb_build_object('pricing', (select jsonb_build_object(
+           'markup', rules->'markup', 'evalPrice', rules->'evalPrice', 'prepPrice', rules->'prepPrice',
+           'gemTiers', rules->'gemTiers', 'magPrice', rules->'magPrice') from public.pricing where id = 1));
+$$;
+grant execute on function public.site_get() to anon, authenticated;
+
+-- Photos uploaded from the Website section (hero, promos, events, Instagram, shop).
+insert into storage.buckets (id, name, public) values ('site-media', 'site-media', true) on conflict (id) do nothing;
+drop policy if exists site_media_insert on storage.objects;
+create policy site_media_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'site-media' and public.can_edit_site());
+drop policy if exists site_media_update on storage.objects;
+create policy site_media_update on storage.objects for update to authenticated
+  using (bucket_id = 'site-media' and public.can_edit_site());
+drop policy if exists site_media_delete on storage.objects;
+create policy site_media_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'site-media' and public.can_edit_site());

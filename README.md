@@ -6,8 +6,9 @@ Live at **https://pbgcardshtx.com**. Website, customer order tracking, staff por
 |---|---|
 | `/` | Public website |
 | `/status.html` | Customer's private order status page (linked from the QR code on their receipt) |
-| `/staff/` | Staff portal: orders, grading stages, pickup clock, payouts |
+| `/staff/` | Staff portal: orders, grading stages, pickup clock, payouts, and **Website** (edit hours, announcement, homepage, promos, events, shop photos, Instagram grid) |
 | `/intake/` | iPad intake app (Add to Home Screen in Safari) |
+| `site-content.js` | Applies what's saved under Website to the public page |
 | `pbg-config.js` | The one settings file: Supabase URL/key, site URLs, pickup policy, Restored Rarity link |
 | `supabase/` | Database schema and the email function (not served) |
 
