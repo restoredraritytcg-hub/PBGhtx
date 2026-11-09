@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<title>Your order | PBG Cards & Collectibles HTX</title>
+<link rel="icon" href="assets/pbg-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<script src="pbg-config.js"></script>
+<script src="pbg-api.js"></script>
+<style>
+:root{--red:#E31B23;--panel:#151515;--line:#2E2E2E;--smoke:#B4B4B4;--green:#2BD46A}
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:#fff;font-family:Archivo,system-ui,sans-serif;font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(90% 50% at 50% 0%,rgba(227,27,35,.22),transparent 70%)}
+h1,h2,h3{margin:0;line-height:1.05;font-style:italic;font-weight:900;font-variation-settings:"wdth" 112}
+p{margin:0}
+a{color:inherit}
+:focus-visible{outline:3px solid #FF8A1F;outline-offset:3px}
+.wrap{max-width:760px;margin:0 auto;padding:24px 20px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px}
+header img{height:64px;width:auto}
+header a{font-size:15px;color:var(--smoke)}
+.muted{color:var(--smoke)}
+
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;position:relative;overflow:hidden}
+.hero .tk{font-size:14px;color:var(--smoke)}
+.hero h1{font-size:clamp(30px,6vw,44px);margin-top:6px}
+.hero .now{margin-top:22px;padding:18px;border-radius:14px;background:#000;border:2px solid var(--red)}
+.hero .now span{font-size:13px;font-weight:800;color:var(--red)}
+.hero .now h2{font-size:28px;margin-top:4px}
+.hero .now p{color:var(--smoke);margin-top:6px}
+.bar{height:10px;border-radius:10px;background:#2A2A2A;margin-top:20px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),#FF8A1F);border-radius:10px;transition:width .8s ease}
+.barl{display:flex;justify-content:space-between;font-size:13px;color:var(--smoke);margin-top:8px}
+
+section{margin-top:28px}
+section > h2{font-size:24px;margin-bottom:14px}
+.steps{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px 22px}
+.steps .grp{display:block;font-size:12px;font-weight:800;color:var(--smoke);padding:16px 0 4px}
+.steps li.s{display:grid;grid-template-columns:28px 1fr auto;gap:12px;padding:10px 0;position:relative}
+.steps li.s i{width:18px;height:18px;border-radius:50%;border:2px solid #555;margin-top:3px;background:#000;position:relative;z-index:1}
+.steps li.s:not(.last)::before{content:"";position:absolute;left:8px;top:28px;bottom:-12px;width:2px;background:#333}
+.steps li.done i{background:#fff;border-color:#fff}
+.steps li.done:not(.last)::before{background:#fff}
+.steps li.cur i{background:var(--red);border-color:var(--red);box-shadow:0 0 0 5px rgba(227,27,35,.25)}
+.steps li.s b{font-weight:700}
+.steps li.todo{color:#777}
+.steps li.s small{font-size:13px;color:var(--smoke);white-space:nowrap}
+.steps li.s p{font-size:14px;color:var(--smoke);margin-top:2px}
+
+.cards{display:grid;gap:12px}
+.card{display:grid;grid-template-columns:76px 1fr;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card img,.card .noimg{width:76px;height:106px;object-fit:cover;border-radius:8px;background:#222;display:grid;place-items:center;font-size:12px;color:#777}
+.card h3{font-size:19px}
+.card .meta{font-size:14px;color:var(--smoke)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12px;font-weight:800;font-style:italic;padding:4px 10px;background:#2A2A2A;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.grade{display:inline-block;margin-top:10px;background:#fff;color:#000;font-weight:900;font-style:italic;padding:6px 14px;font-size:18px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.eval{margin-top:8px;font-size:14px;border-left:3px solid #8E6CF0;padding-left:10px}
+
+.notes{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 18px}
+.notes div{padding:12px 0;border-top:1px solid var(--line)}
+.notes div:first-child{border-top:0}
+.notes small{color:var(--smoke);font-size:13px}
+
+.help{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;background:var(--red);border-radius:14px;padding:20px 22px}
+.help b{font-style:italic;font-size:20px}
+.btn{display:inline-flex;align-items:center;min-height:48px;padding:0 22px;background:#fff;color:#000;font-weight:850;font-style:italic;text-decoration:none;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+.center{text-align:center;padding:60px 10px}
+.demo{margin-top:24px;background:#1E1A10;border:1px solid #5A4A1A;border-radius:14px;padding:16px;font-size:15px}
+.demo a{display:block;padding:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><a href="index.html" aria-label="PBG home"><img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"></a><a href="tel:+18326107081">832-610-7081</a></header>
+  <main id="app"><div class="center muted">Loading your order…</div></main>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = d => new Date(d).toLocaleDateString([], { month: "short", day: "numeric" });
+const HELP = `<section><div class="help"><div><b>Questions about your order?</b><p>Call or stop by. Open daily, 11 AM to 7 PM.</p></div><a class="btn" href="tel:+18326107081">Call 832-610-7081</a></div></section>`;
+
+function notFound(){
+  let demo = "";
+  if(PBG.mode === "demo"){
+    demo = `<div class="demo"><b>Demo mode.</b> Pick a sample order to see what customers see:${PBG.demoTokens().map(t => `<a href="#${t.token}">${esc(t.ticket)}: ${esc(t.name)}, ${t.grader === "None" ? "prep only" : esc(PBG.graderName(t.grader))}</a>`).join("")}</div>`;
+  }
+  $("#app").innerHTML = `<div class="hero"><h1>We couldn't find that order</h1>
+    <p class="muted" style="margin-top:12px">Use the link or QR code on your PBG receipt. If it still won't open, call the shop with your ticket number and we'll look it up.</p></div>${demo}${HELP}`;
+}
+
+async function load(){
+  const token = location.hash.replace(/^#/, "").trim();
+  if(!token) return notFound();
+  let o, rows;
+  try{ await PBG.init(); [o, rows] = await Promise.all([PBG.getStatus(token), PBG.stages()]); }
+  catch(e){ $("#app").innerHTML = `<div class="hero"><h1>Can't load your order right now</h1><p class="muted" style="margin-top:12px">Check your connection and refresh the page. ${esc(e.message)}</p></div>${HELP}`; return; }
+  if(!o) return notFound();
+
+  const list = PBG.stageList(o, rows), idx = Math.max(0, list.findIndex(s => s.code === o.current_stage)), cur = list[idx];
+  const reached = {}; (o.events || []).forEach(e => { if(!reached[e.stage]) reached[e.stage] = e.at; });
+  const pct = Math.round(idx / Math.max(1, list.length - 1) * 100);
+  const gname = o.grader === "None" ? null : PBG.graderName(o.grader);
+  const phaseName = p => ({ shop: "At PBG", partner: "Prep with Restored Rarity TCG", ship: "Shipping", grader: "At " + gname }[p]);
+  const notes = (o.events || []).filter(e => e.note).reverse();
+  const done = o.current_stage === "ready" || o.current_stage === "picked_up";
+  let prev = null;
+  document.title = `${o.ticket} | PBG Cards & Collectibles HTX`;
+
+  $("#app").innerHTML = `
+    <div class="hero">
+      <p class="tk">Ticket ${esc(o.ticket)} &nbsp; Checked in ${fmt(o.created_at)}</p>
+      <h1>Hi ${esc(o.first_name)}, here's where your cards are.</h1>
+      <p class="muted" style="margin-top:8px">${o.cards.length} card${o.cards.length === 1 ? "" : "s"} ${gname ? `for ${esc(gname)} ${esc(o.tier || "")} grading` : "for prep with Restored Rarity TCG"}.</p>
+      <div class="now"><span>${done ? "Good news" : "Current stage"}</span><h2>${esc(cur.label)}</h2><p>${esc(cur.customer_text)}</p>
+        ${o.current_stage === "ready" && o.payment_when === "pickup" ? `<p style="color:#fff;margin-top:10px">Balance due at pickup: <b>$${(+o.total || 0).toFixed(2)}</b></p>` : ""}</div>
+      <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Order progress"><i style="width:${pct}%"></i></div>
+      <div class="barl"><span>Step ${idx + 1} of ${list.length}</span><span>${pct}%</span></div>
+    </div>
+
+    <section><h2>Every stage</h2>
+      <ol class="steps">${list.map((s, i) => { const g = s.phase !== prev ? `<li><span class="grp">${esc(phaseName(s.phase))}</span></li>` : ""; prev = s.phase;
+        return g + `<li class="s ${i < idx ? "done" : i === idx ? "cur" : "todo"} ${i === list.length - 1 ? "last" : ""}"><i></i>
+          <div><b>${esc(s.label)}</b>${i === idx ? `<p>${esc(s.customer_text)}</p>` : ""}</div><small>${reached[s.code] ? fmt(reached[s.code]) : ""}</small></li>`; }).join("")}</ol>
+      ${gname ? `<p class="muted" style="font-size:14px;margin-top:10px">${esc(gname)} updates their stages in batches, so your order can sit on one stage for a while and then move quickly. We update this page as soon as we see a change.</p>` : ""}
+      ${o.return_tracking ? `<p style="margin-top:10px;font-size:15px">Return tracking: <b>${esc(o.return_tracking)}</b></p>` : ""}
+    </section>
+
+    ${notes.length ? `<section><h2>Updates from the shop</h2><div class="notes">${notes.map(n => `<div><small>${fmt(n.at)}</small><p>${esc(n.note)}</p></div>`).join("")}</div></section>` : ""}
+
+    <section><h2>Your cards</h2><div class="cards">${o.cards.map(c => { const img = PBG.photoUrl(c.front_path); return `<div class="card">
+      ${img ? `<img src="${esc(img)}" alt="${esc(c.name)}" loading="lazy">` : `<div class="noimg">No photo</div>`}
+      <div><h3>${esc(c.name)}</h3><p class="meta">${esc([c.year, c.set_name, c.card_number && "#" + c.card_number, c.variant].filter(Boolean).join(", "))}</p>
+        <div class="chips">${c.gem ? '<span class="chip" style="background:#5A4600">Gem service</span>' : ""}${c.eval ? '<span class="chip">Full evaluation</span>' : ""}${c.clean ? '<span class="chip">Prep</span>' : ""}${c.repair ? '<span class="chip">Repair with Restored Rarity</span>' : ""}</div>
+        ${c.eval_result ? `<p class="eval"><b>Evaluation:</b> ${esc(c.eval_result)}</p>` : ""}
+        ${c.repair ? `<p class="eval">Repairs are handled by Restored Rarity TCG, who send you their own quote and tracking link.</p>` : ""}
+        ${c.card_status ? `<p class="eval">${esc(c.card_status)}</p>` : ""}
+        ${c.grade ? `<span class="grade">${esc(c.grade)}</span>${c.cert_number ? `<p class="meta" style="margin-top:6px">Cert #${esc(c.cert_number)}</p>` : ""}` : ""}
+      </div></div>`; }).join("")}</div></section>
+    ${HELP}`;
+}
+window.addEventListener("hashchange", load);
+load();
+</script>
+</body>
+</html>

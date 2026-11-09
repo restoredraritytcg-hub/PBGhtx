@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PBG Intake">
+<meta name="theme-color" content="#000000">
+<title>PBG Card Intake</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<script src="../pbg-config.js"></script>
+<script src="../pbg-api.js"></script>
+<script src="cardsearch.js"></script>
+<script src="rr-push.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#141414;--navy-2:#2A2A2A;--red:#E31B23;--paper:#F5F6F3;--white:#fff;
+  --steel:#6C778A;--line:#D5D9E0;--green:#1F8A4C;--amber:#B7791F;--wide:"wdth" 118;--narrow:"wdth" 72;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--navy);font-family:Archivo,system-ui,sans-serif;font-size:18px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+h1,h2,h3{margin:0;line-height:1.1;font-variation-settings:var(--wide);font-style:italic;font-weight:900}
+h1{font-size:40px;font-weight:850}
+h2{font-size:30px;font-weight:800}
+h3{font-size:20px;font-weight:750}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+[hidden]{display:none!important}
+
+.bar{background:#000;color:#fff;display:flex;align-items:center;gap:20px;padding:0 24px;height:68px;position:sticky;top:0;z-index:10}
+.bar .mark{font-weight:900;font-size:24px;font-variation-settings:"wdth" 125;letter-spacing:.02em}
+.bar .sub{font-size:15px;opacity:.75;font-variation-settings:var(--narrow)}
+.bar .right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.pill{font-size:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12)}
+.pill.warn{background:#F6E0B5;color:#5A3A00}
+.icon-btn{width:48px;height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;display:grid;place-items:center;cursor:pointer}
+
+.steps{display:flex;gap:6px;padding:16px 24px 0;max-width:1100px;margin:0 auto}
+.steps div{flex:1;font-size:15px;color:var(--steel);border-top:4px solid var(--line);padding-top:8px}
+.steps div.on{color:var(--navy);border-color:var(--red);font-weight:700}
+.steps div.done{color:var(--navy);border-color:var(--navy)}
+
+main{max-width:1100px;margin:0 auto;padding:24px 24px 140px}
+.screen-head{margin:12px 0 24px}
+.screen-head p{color:var(--steel);margin-top:8px}
+
+.panel{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:24px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+label.f{display:block;font-size:15px;color:var(--steel);font-weight:600}
+label.f .req{color:var(--red)}
+input.t,select.t,textarea.t{display:block;width:100%;margin-top:6px;min-height:54px;padding:12px 14px;font-size:18px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--navy)}
+textarea.t{min-height:120px;resize:vertical}
+input.t:focus,select.t:focus,textarea.t:focus{border-color:var(--navy);outline:none}
+input.t.bad{border-color:var(--red)}
+.err{color:var(--red);font-size:15px;margin-top:6px}
+
+.seg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.seg button{min-height:52px;padding:0 18px;border-radius:12px;border:2px solid var(--line);background:#fff;cursor:pointer;font-weight:600}
+.seg button[aria-pressed=true]{border-color:var(--navy);background:var(--navy);color:#fff}
+
+.choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.choice{text-align:left;padding:18px;border-radius:14px;border:2px solid var(--line);background:#fff;cursor:pointer;min-height:92px}
+.choice b{display:block;font-size:20px;font-variation-settings:var(--wide)}
+.choice span{display:block;color:var(--steel);font-size:15px;margin-top:4px}
+.choice[aria-pressed=true]{border-color:var(--navy);box-shadow:inset 0 0 0 2px var(--navy)}
+.choice .price{color:var(--navy);font-weight:800;font-size:22px;margin-top:8px}
+.choice.paused{opacity:.45;cursor:not-allowed;background:#EEE;border-style:dashed}
+.choice.paused .price{text-decoration:line-through}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 26px;border-radius:999px;border:2px solid transparent;font-weight:750;font-size:18px;cursor:pointer;text-decoration:none}
+.btn-red{background:var(--red);color:#fff}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-line{border-color:var(--navy);background:#fff;color:var(--navy)}
+.btn-ghost{background:transparent;color:var(--navy)}
+.btn-sm{min-height:44px;padding:0 16px;font-size:16px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:14px 24px calc(14px + env(safe-area-inset-bottom));z-index:9}
+.foot .in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.foot .sum{margin-right:auto;font-size:16px;color:var(--steel)}
+.foot .sum b{color:var(--navy);font-size:22px}
+
+/* welcome */
+.welcome{background:radial-gradient(90% 60% at 50% 100%,rgba(227,27,35,.12),transparent 70%);min-height:calc(100vh - 68px);display:grid;place-items:center;text-align:center;padding:40px 24px}
+.welcome h1{font-size:clamp(40px,6vw,64px)}
+.welcome p{color:var(--steel);font-size:21px;max-width:32em;margin:18px auto 0}
+.welcome .btn{margin-top:40px;min-height:72px;font-size:22px;padding:0 44px}
+.welcome .partner{margin-top:48px;font-size:16px;color:var(--steel)}
+.svc{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:36px}
+.svc div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;text-align:left;width:250px}
+.svc b{display:block}
+.svc span{color:var(--steel);font-size:15px}
+
+/* cards */
+.cardrow{display:grid;grid-template-columns:88px 1fr auto;gap:16px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.cardrow:first-child{border-top:0}
+.thumb{width:88px;height:120px;border-radius:8px;background:#E7EBF2 center/cover no-repeat;border:1px solid var(--line);display:grid;place-items:center;color:var(--steel);font-size:13px}
+.cardrow .meta{font-size:15px;color:var(--steel)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:13px;font-weight:700;padding:4px 10px;border-radius:999px;background:#ECECEC;color:#333}
+.tag.rr{background:#FBE6E9;color:#8E1423}
+.tag.warn{background:#FCEFD6;color:#7A4D00}
+.empty{text-align:center;padding:40px 20px;color:var(--steel)}
+.bulk{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
+.bulk span{color:var(--steel);font-size:15px;margin-right:4px}
+
+.toggle{display:flex;align-items:flex-start;gap:14px;padding:16px;border:2px solid var(--line);border-radius:14px;cursor:pointer;background:#fff}
+.toggle input{width:26px;height:26px;margin:2px 0 0;accent-color:var(--navy);flex:none}
+.toggle b{display:block}
+.toggle span{display:block;color:var(--steel);font-size:15px}
+.toggle:has(input:checked){border-color:var(--navy)}
+.toggle .amt{margin-left:auto;font-weight:800;white-space:nowrap}
+
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px}
+.photo{position:relative;aspect-ratio:5/7;border:2px dashed var(--line);border-radius:12px;display:grid;place-items:center;text-align:center;color:var(--steel);cursor:pointer;background:#FAFBFC center/contain no-repeat;font-size:15px;padding:10px}
+.photo.has{border-style:solid;border-color:var(--navy)}
+.photo.has span{display:none}
+.photo input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* review */
+table.sum{width:100%;border-collapse:collapse;font-size:16px}
+table.sum th{text-align:left;color:var(--steel);font-weight:600;padding:8px 8px;border-bottom:2px solid var(--navy);font-size:14px}
+table.sum td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.sum td.n,table.sum th.n{text-align:right;white-space:nowrap}
+.totals{margin-left:auto;width:min(380px,100%);margin-top:16px}
+.totals div{display:flex;justify-content:space-between;padding:6px 0}
+.totals .grand{border-top:2px solid var(--navy);margin-top:6px;padding-top:12px;font-size:24px;font-weight:850}
+.terms{font-size:15px;color:#3C4659;background:var(--paper);border-radius:12px;padding:16px;max-height:220px;overflow:auto;white-space:pre-wrap}
+.sig{position:relative;margin-top:8px}
+.sig canvas{width:100%;height:180px;border:2px solid var(--line);border-radius:12px;background:#fff;touch-action:none;display:block}
+.sig .clear{position:absolute;right:10px;top:10px}
+.sig .hint{position:absolute;left:16px;bottom:14px;color:#A3ABB9;font-size:15px;pointer-events:none;border-top:1px solid #C9CFDA;right:16px;padding-top:6px}
+
+/* done */
+.ticket{text-align:center;padding:40px 24px}
+.ticket .num{font-size:clamp(44px,8vw,80px);font-weight:900;font-variation-settings:"wdth" 80;letter-spacing:.02em;margin:10px 0}
+.ticket p{color:var(--steel)}
+.sync{display:inline-flex;gap:8px;align-items:center;font-size:15px;margin-top:14px;padding:6px 14px;border-radius:999px;background:#ECECEC}
+.sync.ok{background:#DDF1E4;color:#14532D}.sync.wait{background:#FCEFD6;color:#7A4D00}
+
+/* staff */
+.tabs{display:flex;gap:8px;margin-bottom:20px}
+.list .row{display:grid;grid-template-columns:1.2fr 1.4fr .6fr .7fr auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--line);font-size:16px}
+.list .row.h{color:var(--steel);font-size:14px;border-top:0}
+@media (max-width:760px){.list .row{grid-template-columns:1fr 1fr}}
+.notice{background:#FCEFD6;color:#5A3A00;border-radius:12px;padding:14px 16px;font-size:15px;margin-bottom:16px}
+.tierline{display:grid;grid-template-columns:1.2fr 1.6fr .8fr .8fr auto auto;gap:8px;align-items:end;margin-top:8px}
+.tierline input.t{min-height:46px;font-size:16px;padding:8px 10px}
+.grader-block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(19,37,75,.45);display:grid;place-items:center;z-index:50;padding:20px}
+.modal{background:#fff;border-radius:18px;width:min(760px,100%);max-height:92vh;overflow:auto;padding:28px}
+.modal .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;flex-wrap:wrap}
+.pinpad{display:grid;grid-template-columns:repeat(3,84px);gap:10px;justify-content:center;margin-top:20px}
+.pinpad button{height:72px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:26px;font-weight:700;cursor:pointer}
+.pindots{display:flex;justify-content:center;gap:12px;margin-top:16px}
+.pindots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--navy)}
+.pindots i.f{background:var(--navy)}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 20px;border-radius:999px;z-index:60;font-size:16px}
+
+/* print receipt */
+#print{display:none}
+@media print{
+  body{background:#fff}
+  body>*:not(#print){display:none!important}
+  #print{display:block;font-size:12pt;color:#000;padding:0}
+  #print h1{font-size:20pt}
+  #print table{width:100%;border-collapse:collapse;margin-top:10pt}
+  #print td,#print th{border-bottom:1px solid #999;padding:4pt;text-align:left;font-size:10pt}
+  #print .tn{font-size:28pt;font-weight:900;margin:6pt 0}
+}
+</style>
+<style>
+.qr{display:flex;gap:20px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:22px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.qr .code{width:150px;height:150px;display:grid;place-items:center;background:#fff}
+.qr .code img,.qr .code canvas{width:150px;height:150px;image-rendering:pixelated}
+.qr p{max-width:300px;text-align:left;font-size:15px}
+.acct{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <img src="pbg-logo.png" alt="PBG Cards & Collectibles HTX" style="height:50px;width:auto">
+  <span class="sub">Card intake</span>
+  <div class="right">
+    <span class="pill warn" id="setupPill" hidden>Prices not set</span>
+    <span class="pill" id="queuePill" hidden></span>
+    <button class="icon-btn" id="staffBtn" aria-label="Staff menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<nav class="steps" id="steps" hidden aria-label="Progress"></nav>
+<div id="app"></div>
+<div class="foot" id="foot" hidden><div class="in" id="footIn"></div></div>
+<div id="print"></div>
+
+<script>
+/* ============================================================
+   PBG Cards & Collectibles HTX: iPad card intake
+   Settings are edited in the app (Staff menu, PIN) and saved on
+   this iPad. DEFAULTS below are placeholders until staff save.
+   ============================================================ */
+const DEFAULTS = {
+  pin: "1234",                          // manager PIN for the Staff menu
+  employees: [],                        // [{ name, hash }] 4-digit codes, stored hashed
+  taxRate: 0,                           // percent, applied to the whole ticket
+  // Customer price for grading = the grading company's fee + markup.
+  markup: 20,                           // added to every graded card
+  evalPrice: 17,                        // Full evaluation with magnification (Restored Rarity)
+  prepPrice: 7,                         // Prep only: cleaning and grading prep (Restored Rarity)
+  // Gem service for high-value graded cards (includes a magnetic case). Highest tier the declared value passes applies.
+  gemTiers: [ { over: 4000, fee: 40 }, { over: 6000, fee: 60 }, { over: 8000, fee: 80 }, { over: 10000, fee: 100 } ],
+  // Matching magnetic slab case, handed over with the slab at pickup. Graded cards only; gem cards already include one.
+  magPrice: 15,
+  // Profit split, saved on every order. Restored Rarity gets the rest of each add-on price.
+  split: { pbgPerGrade: 12, rrPerGrade: 8, pbgPerEval: 2, pbgPerPrep: 2, pbgGemPct: 70, pbgMagPct: 100 },
+  pricesChecked: "Nov 9, 2026",
+  // fee = what the grading company charges per card. active:false = paused by the company (shown greyed out).
+  graders: [
+    { name: "PSA", tiers: [
+      { name: "Value Bulk",    fee: 24.99, max: 500,   eta: "Collectors Club, 20-card minimum", active: false },
+      { name: "Value",         fee: 39.99, max: 500,   eta: "About 90 to 100 business days",   active: true },
+      { name: "Value Plus",    fee: 49.99, max: 500,   eta: "",                                 active: false },
+      { name: "Standard",      fee: 59.99, max: 1000,  eta: "About 70 to 80 business days",     active: true },
+      { name: "Value Max",     fee: 64.99, max: 1000,  eta: "",                                 active: false },
+      { name: "Priority",      fee: 79.99, max: 1500,  eta: "About 50 to 60 business days",     active: true },
+      { name: "Express",       fee: 199,   max: 2500,  eta: "About 20 to 30 business days",     active: true },
+      { name: "Super Express", fee: 349,   max: 5000,  eta: "About 10 to 15 business days",     active: true },
+      { name: "Premier",       fee: 599,   max: 10000, eta: "Fastest PSA service",              active: true } ] },
+    { name: "CGC", tiers: [
+      { name: "Bulk",        fee: 17,  max: 500,    eta: "About 150 working days. Ships in PBG's 25-card batch", active: true },
+      { name: "Economy",     fee: 20,  max: 1000,   eta: "About 90 working days",  active: true },
+      { name: "Standard",    fee: 55,  max: 3000,   eta: "About 10 working days",  active: true },
+      { name: "Express",     fee: 100, max: 10000,  eta: "About 5 working days",   active: true },
+      { name: "WalkThrough", fee: 300, max: 100000, eta: "About 2 working days",   active: true } ] },
+    { name: "BGS", tiers: [
+      { name: "Base",                 fee: 14.95,  max: 250,  eta: "No subgrades",               active: false },
+      { name: "Base with subgrades",  fee: 17.95,  max: 250,  eta: "",                           active: false },
+      { name: "Standard",             fee: 34.95,  max: 1000, eta: "Subgrades included",         active: false },
+      { name: "Express",              fee: 79.95,  max: 2500, eta: "About 15 business days, subgrades included", active: true },
+      { name: "Priority",             fee: 124.95, max: 5000, eta: "About 5 business days",      active: false } ] },
+    { name: "TAG", tiers: [
+      { name: "Value",    fee: 29.95,  max: 250,  eta: "About 90 business days. Ships in PBG's 10-card batch", active: true },
+      { name: "Base",     fee: 39.95,  max: 500,  eta: "About 60 business days. Ships in PBG's 5-card batch",  active: true },
+      { name: "Standard", fee: 59.95,  max: 1000, eta: "About 45 business days, includes TAG Score", active: true },
+      { name: "Priority", fee: 79.95,  max: 1500, eta: "About 30 business days",  active: true },
+      { name: "Express",  fee: 149.95, max: 2500, eta: "About 10 business days",  active: true },
+      { name: "Premier",  fee: 299.95, max: 5000, eta: "About 3 to 5 business days", active: true } ] }
+  ],
+  terms:
+`PBG CARDS & COLLECTIBLES HTX: SUBMISSION TERMS
+
+1. GRADING. PBG Cards & Collectibles HTX ("PBG") submits cards to third-party grading companies (PSA, CGC, BGS, TAG) on your behalf. PBG is not affiliated with any grading company. Grades, authentication, labels and turnaround times are decided only by the grading company. PBG does not guarantee any grade, and is not responsible if a card grades lower than hoped, is rejected, gets no numeric grade or receives an altered/authentic-only label.
+
+2. PRICES AND UPCHARGES. Grading prices are the grading company's fee plus PBG's $20 handling fee. Grading companies set and change their own fees, tiers and turnaround times without notice. If a grading company places a card in a higher value tier or charges an upcharge, you are responsible for that amount; PBG will contact you before you are charged. Graded cards declared above $4,000 receive PBG's gem service with a magnetic case: $40 over $4,000, $60 over $6,000, $80 over $8,000 and $100 over $10,000. Any other graded card can add a matching magnetic slab case for $15, handed to you with your slab at pickup; it is only sold with a grading submission and is non-refundable once your cards are graded.
+
+3. DECLARED VALUES. Card values you enter are your estimate. They are used to choose the grading tier, the gem service and shipping insurance only. They are not an agreed replacement value or a guaranteed resale value. PBG may verify values and may decline any card.
+
+4. PREP AND EVALUATIONS. Prep (cleaning and grading prep) and full evaluations with magnification are performed by Restored Rarity TCG, an independent partner of PBG, by professionals in the restoration space familiar with grading company requirements. Cards you choose these services for go from PBG to Restored Rarity and back to PBG before any grading submission. Prep is surface-level and non-invasive. An evaluation is a professional opinion, not a guaranteed grade.
+
+5. REPAIRS. PBG is an authorized drop-off location for Restored Rarity. Repairs are a separate submission with Restored Rarity under its own Terms & Conditions. Restored Rarity quotes and bills repairs directly, and no repair is done without your approval.
+
+6. PAYMENT. All charges, including any upcharge and holding fees, must be paid before cards are released. Fees for services already performed (prep, evaluation, grading fees paid to the grading company) are non-refundable.
+
+7. SHIPPING AND LIABILITY. Cards travel to and from grading companies and Restored Rarity by insured carrier. PBG uses reasonable care with your cards while they are at the shop. PBG is not responsible for delays or decisions by grading companies, or for loss or damage while cards are in a carrier's or grading company's custody beyond what PBG recovers through insurance or claims, which PBG will pass on to you. PBG is not responsible for changes in market value, expected grades, lost profits or indirect damages. Nothing in these terms limits liability that cannot legally be limited under Texas law.
+
+8. CONTACT. PBG will reach you by the phone, email and mailing address you give us. You are responsible for keeping them current and checking your messages. Notices sent to the contact information on this ticket count as notice to you.
+
+9. PHOTOS. PBG may photograph your cards for intake records and may show the cards (never your name or personal details) on PBG's website and social media.
+
+10. PICKUP AND UNCLAIMED CARDS (PLEASE READ).
+ a. When your cards are back at PBG, we will text and/or email you that they are ready. Storage is free for 30 days after that ready notice.
+ b. Starting on day 31, a holding fee of $1 per card per day applies and must be paid before the cards are released.
+ c. If your cards are still not picked up 60 days after the ready notice, PBG will send a final notice by text and/or email AND by certified mail to the mailing address on this ticket. The final notice will state the amount owed and a pickup deadline at least 30 days after the notice is sent.
+ d. If you do not pick up your cards and pay what is owed by the deadline in the final notice (never earlier than day 90 after the ready notice), you agree your cards are abandoned and you transfer ownership of them to PBG. PBG may then sell them, at a public or private sale, on or after the next day (day 91 or later).
+ e. If PBG sells your cards, PBG keeps the full sale price, including any amount above what you owed. You will not receive any of the sale proceeds. The only refund available is the grading fees you paid to PBG at drop-off, which PBG will refund if you ask for them after the sale. If you paid nothing at drop-off, no refund is due.
+ f. By signing, you agree that the ready notice, the reminder and the final notice described above are reasonable notice, and that you have no reasonable cause to object to PBG selling your cards on or after day 91 when this process has been followed.
+ g. Cards are released only to you with your ticket number and a photo ID, or to someone you authorize in writing who brings your ticket and their photo ID.
+
+11. TEXAS LAW. These terms are governed by the laws of the State of Texas.
+
+12. BY SIGNING, you confirm you own these cards or are authorized to submit them, and you agree to these terms.`
+};
+
+const PICKUP = (window.PBG_CONFIG && window.PBG_CONFIG.pickup) || { freeDays: 30, feePerCardPerDay: 1, finalNoticeDay: 60, noticePeriodDays: 30 };
+const CATEGORIES = ["Pokémon", "Sports", "Other TCG"];
+const REPAIR_TYPES = { base: "Base repair", major: "Major repair", unsure: "Not sure, needs a look" };
+const IF_LOW = [
+  ["call",   "Call me first"],
+  ["submit", "Submit anyway"],
+  ["return", "Don't grade it, return the card"]
+];
+
+/* ---------------- storage ---------------- */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+};
+const SETTINGS_VERSION = 13;   // bump when DEFAULTS prices/companies change shape
+let settings = (() => {
+  const saved = LS.get("pbg.settings", {}) || {};
+  if(saved.version !== SETTINGS_VERSION){   // older saved prices: keep employees, PIN and terms only
+    const keep = {}; ["employees","pin"].forEach(k => { if(saved[k] !== undefined) keep[k] = saved[k]; });
+    return Object.assign(structuredClone(DEFAULTS), keep, { version: SETTINGS_VERSION });
+  }
+  return Object.assign(structuredClone(DEFAULTS), saved);
+})();
+const settingsSaved = () => true;   // defaults are real prices now; staff review them under Settings
+
+const DB = (() => {
+  let dbp = null;
+  function open(){
+    if(dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      try{
+        const r = indexedDB.open("pbg-intake", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("subs", { keyPath: "ticket" });
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      }catch(e){ rej(e); }
+    });
+    return dbp;
+  }
+  async function tx(mode, fn){
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction("subs", mode), s = t.objectStore("subs");
+      const out = fn(s);
+      t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+      t.onerror = () => rej(t.error);
+    });
+  }
+  const mem = new Map(); // fallback if IndexedDB is unavailable
+  return {
+    async put(sub){ try{ await tx("readwrite", s => s.put(sub)); }catch(e){ mem.set(sub.ticket, sub); } },
+    async all(){ try{ return await tx("readonly", s => s.getAll()); }catch(e){ return [...mem.values()]; } }
+  };
+})();
+
+/* ---------------- helpers ---------------- */
+const $ = (s, el=document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "$" + (Math.round(n*100)/100).toFixed(2);
+const uid = () => Math.random().toString(36).slice(2,10);
+function toast(msg){ const t = document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
+function fmtPhone(v){ const d = v.replace(/\D/g,"").slice(0,10); if(d.length<4) return d; if(d.length<7) return `${d.slice(0,3)}-${d.slice(3)}`; return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`; }
+function newTicket(){
+  const n = new Date(), p = x => String(x).padStart(2,"0");
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; let r = ""; for(let i=0;i<3;i++) r += A[Math.floor(Math.random()*A.length)];
+  return `PBG-${String(n.getFullYear()).slice(2)}${p(n.getMonth()+1)}${p(n.getDate())}-${r}`;
+}
+function compress(file, max=1400, q=.82){
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, max/Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const full = c.toDataURL("image/jpeg", q);
+      const ts = Math.min(1, 360/Math.max(img.width, img.height)), tc = document.createElement("canvas");
+      tc.width = Math.round(img.width*ts); tc.height = Math.round(img.height*ts); tc.getContext("2d").drawImage(img, 0, 0, tc.width, tc.height);
+      res({ full, thumb: tc.toDataURL("image/jpeg", .75) });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("That file isn't an image the iPad can read.")); };
+    img.src = url;
+  });
+}
+function modal(html, onMount){
+  const s = document.createElement("div"); s.className = "scrim";
+  s.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  document.body.appendChild(s);
+  const close = () => s.remove();
+  onMount && onMount(s.firstElementChild, close);
+  return close;
+}
+function confirmBox(title, body, yes="Yes", no="Cancel"){
+  return new Promise(res => modal(`<h2>${esc(title)}</h2><p style="margin-top:10px;color:var(--steel)">${esc(body)}</p>
+    <div class="acts"><button class="btn btn-line" data-n>${esc(no)}</button><button class="btn btn-red" data-y>${esc(yes)}</button></div>`,
+    (m, close) => { $("[data-n]", m).onclick = () => { close(); res(false); }; $("[data-y]", m).onclick = () => { close(); res(true); }; }));
+}
+
+/* ---------------- submission state ---------------- */
+let sub, step;
+function blankSub(){
+  return {
+    ticket: null, createdAt: null,
+    customer: { first:"", last:"", phone:"", email:"", address:"", contact:"Text", notes:"" },
+    grader: null, tier: null,          // grader name / tier name, or grader "None"
+    cards: [],
+    ifLowGrade: "call",
+    payment: { when: "dropoff", method: "Card" },
+    signature: null, signedName: "", staff: "", agreed: false,
+    totals: null, synced: false, syncError: null
+  };
+}
+function graderObj(){ return settings.graders.find(g => g.name === sub.grader) || null; }
+function tierObj(){ const g = graderObj(); return g ? g.tiers.find(t => t.name === sub.tier) || null : null; }
+// Gem service: graded cards declared above the threshold (+fee, magnetic case included)
+function gemFeeFor(value){
+  let fee = 0; for(const t of (settings.gemTiers || [])) if((+value || 0) > +t.over) fee = Math.max(fee, +t.fee || 0);
+  return fee;
+}
+const gemFee = c => (sub && sub.grader && sub.grader !== "None") ? gemFeeFor(c.value) : 0;
+const isGem = c => gemFee(c) > 0;
+const canMag = c => !!(sub && sub.grader && sub.grader !== "None") && !isGem(c);
+const hasMag = c => !!c.mag && canMag(c);
+const gemMin = () => Math.min(...(settings.gemTiers || [{ over: Infinity }]).map(t => +t.over));
+const tierPrice = t => Math.round(((+t.fee || 0) + (+settings.markup || 0)) * 100) / 100;
+function calc(){
+  const t = tierObj(), grading = !!(sub.grader && sub.grader !== "None" && t);
+  const fee = grading ? +t.fee : 0, markup = grading ? +settings.markup : 0, gradeEach = grading ? tierPrice(t) : 0;
+  let gradedCards = 0, prepCount = 0, evalCount = 0, repairs = 0, gemCount = 0, gemTotal = 0, magCount = 0;
+  for(const c of sub.cards){ if(grading) gradedCards++; if(c.clean) prepCount++; if(c.eval) evalCount++; if(c.repair) repairs++; const gf = gemFee(c); if(gf){ gemCount++; gemTotal += gf; } if(grading && hasMag(c)) magCount++; }
+  const r2 = n => Math.round(n * 100) / 100, sp = settings.split || {};
+  const gradingTotal = r2(gradeEach * gradedCards), cleaning = r2(prepCount * settings.prepPrice), evals = r2(evalCount * settings.evalPrice);
+  const gems = r2(gemTotal), gemPbg = r2(gems * (+sp.pbgGemPct || 0) / 100), gemRr = r2(gems - gemPbg);
+  const mags = r2(magCount * (+settings.magPrice || 0)), magPbg = r2(mags * (sp.pbgMagPct ?? 100) / 100), magRr = r2(mags - magPbg);
+  const subtotal = r2(gradingTotal + cleaning + evals + gems + mags), tax = r2(subtotal * (+settings.taxRate || 0) / 100);
+  const pbgShare = r2(gradedCards * sp.pbgPerGrade + evalCount * sp.pbgPerEval + prepCount * sp.pbgPerPrep + gemPbg + magPbg);
+  const rrShare  = r2(gradedCards * sp.rrPerGrade + evalCount * (settings.evalPrice - sp.pbgPerEval) + prepCount * (settings.prepPrice - sp.pbgPerPrep) + gemRr + magRr);
+  return { gradeEach, fee, markup, grading: gradingTotal, cleaning, evals, repairs, subtotal, tax, total: r2(subtotal + tax), count: sub.cards.length,
+    gemCount, gems, magCount, mags, gradedCards, prepCount, evalCount, graderFees: r2(fee * gradedCards), markupTotal: r2(markup * gradedCards), pbgShare, rrShare };
+}
+const hasPartnerWork = s => s.cards.some(c => c.clean || c.eval || c.repair);
+
+/* ---------------- shell ---------------- */
+const STEP_NAMES = ["Your info", "Grading", "Cards & prep", "Review & sign", "Staff check"];
+function setSteps(i){
+  const el = $("#steps");
+  if(i == null){ el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = STEP_NAMES.map((n, k) => `<div class="${k<i?"done":k===i?"on":""}" ${k===i?'aria-current="step"':""}>${k+1}. ${n}</div>`).join("");
+}
+function setFoot(html){ const f = $("#foot"); if(!html){ f.hidden = true; return; } f.hidden = false; $("#footIn").innerHTML = html; }
+function render(){
+  window.scrollTo(0,0); $("#app").onclick = null;
+  ({ welcome, customer, grading, cards, review, staffcheck, done })[step]();
+  refreshPills();
+}
+function go(s){ step = s; render(); }
+async function refreshPills(){
+  $("#setupPill").hidden = settingsSaved();
+  const pend = (await DB.all()).filter(s => !s.synced || (s.cards.some(c => c.repair) && !s.rrSynced)).length;
+  const q = $("#queuePill");
+  const who = await PBG.currentStaff().catch(() => null);
+  if(PBG.mode === "live" && !who){ q.hidden = false; q.className = "pill warn"; q.textContent = "Not signed in"; }
+  else if(pend){ q.hidden = false; q.className = "pill"; q.textContent = `${pend} waiting to upload`; }
+  else q.hidden = true;
+}
+
+/* ---------------- screens ---------------- */
+function welcome(){
+  setSteps(null); setFoot(null);
+  $("#app").innerHTML = `
+  <div class="welcome"><div>
+    <img src="pbg-logo.png" alt="PBG Cards & Collectibles HTX" style="width:min(420px,80%);margin:0 auto 28px">
+    <h1>Send your cards for grading</h1>
+    <p>Check your cards in here and we'll handle packing and shipping to the grader. It takes about five minutes.</p>
+    <div class="svc">
+      <div><b>Grading</b><span>${settings.graders.map(g=>esc(g.name)).join(", ")}</span></div>
+      <div><b>Full evaluation</b><span>${money(settings.evalPrice)} per card, with magnification</span></div>
+      <div><b>Prep</b><span>${money(settings.prepPrice)} per card, cleaning and grading prep</span></div>
+    </div>
+    <button class="btn btn-red" id="start">Start a submission</button>
+    <div class="partner" style="display:flex;align-items:center;gap:16px;text-align:left;max-width:560px;margin:44px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px"><img src="restored-rarity-logo.jpg" alt="Restored Rarity TCG logo" style="width:84px;height:auto;border-radius:10px;flex:none"><p style="margin:0;font-size:16px;max-width:none">Full evaluations and prep are done by restoration professionals at our partner, Restored Rarity TCG, who know what each grading company looks for.<br>Checking in through PBG gets you a reduced rate.</p></div>
+  </div></div>`;
+  $("#start").onclick = () => { sub = blankSub(); go("customer"); };
+}
+
+function customer(){
+  setSteps(0);
+  const c = sub.customer;
+  $("#app").innerHTML = `<main>
+    <div class="screen-head"><h2>Your info</h2><p>We'll use this to reach you when your cards are back.</p></div>
+    <div class="panel grid">
+      <div class="grid g2">
+        <label class="f">First name <span class="req">*</span><input class="t" id="first" autocomplete="given-name" value="${esc(c.first)}"></label>
+        <label class="f">Last name <span class="req">*</span><input class="t" id="last" autocomplete="family-name" value="${esc(c.last)}"></label>
+      </div>
+      <div class="grid g2">
+        <label class="f">Mobile phone <span class="req">*</span><input class="t" id="phone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(c.phone)}"></label>
+        <label class="f">Email<input class="t" id="email" type="email" inputmode="email" autocomplete="email" value="${esc(c.email)}"></label>
+      </div>
+      <label class="f">Mailing address <span class="req">*</span><input class="t" id="address" autocomplete="street-address" placeholder="Street, city, state, ZIP" value="${esc(c.address||"")}"><span style="font-size:13px;color:var(--steel);font-weight:400">Only used for required notices about your cards.</span></label>
+      <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">Best way to reach you</span>
+        <div class="seg" id="contact">${["Text","Call","Email"].map(o=>`<button type="button" aria-pressed="${c.contact===o}">${o}</button>`).join("")}</div></div>
+      <label class="f">Anything we should know? <textarea class="t" id="notes" placeholder="Optional">${esc(c.notes)}</textarea></label>
+      <div class="err" id="err" hidden></div>
+    </div></main>`;
+  $("#phone").oninput = e => { e.target.value = fmtPhone(e.target.value); };
+  $("#contact").onclick = e => { const b = e.target.closest("button"); if(!b) return; c.contact = b.textContent; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b)); };
+  setFoot(`<button class="btn btn-ghost" id="cancel">Cancel</button><span class="sum"></span><button class="btn btn-red" id="next">Next: grading</button>`);
+  $("#cancel").onclick = cancelFlow;
+  $("#next").onclick = () => {
+    Object.assign(c, { first: $("#first").value.trim(), last: $("#last").value.trim(), phone: $("#phone").value.trim(), email: $("#email").value.trim(), address: $("#address").value.trim(), notes: $("#notes").value.trim() });
+    const errs = [];
+    ["first","last","phone","email","address"].forEach(id => $("#"+id).classList.remove("bad"));
+    if(!c.first){ errs.push("first name"); $("#first").classList.add("bad"); }
+    if(!c.last){ errs.push("last name"); $("#last").classList.add("bad"); }
+    if(c.phone.replace(/\D/g,"").length !== 10){ errs.push("a 10-digit phone number"); $("#phone").classList.add("bad"); }
+    if(!/\d/.test(c.address) || c.address.length < 10){ errs.push("a mailing address with street, city and ZIP"); $("#address").classList.add("bad"); }
+    if(c.email && !/^\S+@\S+\.\S+$/.test(c.email)){ errs.push("a valid email, or leave it blank"); $("#email").classList.add("bad"); }
+    if(c.contact === "Email" && !c.email){ errs.push("an email, since you picked email as the way to reach you"); $("#email").classList.add("bad"); }
+    if(errs.length){ const e = $("#err"); e.hidden = false; e.textContent = "Please enter " + errs.join(", ") + "."; return; }
+    go("grading");
+  };
+}
+
+function grading(){
+  setSteps(1);
+  const gList = [...settings.graders.map(g => g.name), "None"];
+  const g = graderObj();
+  $("#app").innerHTML = `<main>
+    <div class="screen-head"><h2>Choose a grading company</h2><p>All cards on one ticket go to the same company at the same service level. Use a second ticket to split them up.</p></div>
+    <div class="choices" id="graders">${gList.map(n => `<button class="choice" aria-pressed="${sub.grader===n}" data-g="${esc(n)}">
+      <b>${n==="None" ? "No grading" : esc(n)}</b><span>${n==="None" ? "Prep or a Restored Rarity repair only. Cards come back to you." : "Submit through PBG"}</span></button>`).join("")}</div>
+    <div id="tierWrap" ${g ? "" : "hidden"} style="margin-top:32px">
+      <h3>Service level</h3>
+      <p style="color:var(--steel);margin:6px 0 14px;font-size:16px">Pick the level that covers your highest declared value.</p>
+      <div class="choices" id="tiers">${g ? g.tiers.map(t => t.active === false
+        ? `<button class="choice paused" disabled aria-disabled="true"><b>${esc(t.name)}</b><span>Paused by ${esc(PBG.graderName(g.name))}. Not taking new cards right now.</span><div class="price">${money(tierPrice(t))}</div></button>`
+        : `<button class="choice" aria-pressed="${sub.tier===t.name}" data-t="${esc(t.name)}">
+        <b>${esc(t.name)}</b><span>${t.max ? "Declared value up to " + money(t.max).replace(".00","") : "No value limit"}${t.eta ? "<br>" + esc(t.eta) : ""}</span>
+        <div class="price">${money(tierPrice(t))} <small style="font-size:14px;color:var(--steel);font-weight:600">per card</small></div></button>`).join("") : ""}</div>
+      <p style="color:var(--steel);font-size:14px;margin-top:12px">Prices include the grading company's fee and PBG's $${(+settings.markup).toFixed(0)} handling. Grading companies set their own fees and may add upcharges.</p>
+    </div></main>`;
+  $("#graders").onclick = e => { const b = e.target.closest("[data-g]"); if(!b) return; if(sub.grader !== b.dataset.g){ sub.grader = b.dataset.g; sub.tier = null; } render(); };
+  const tiers = $("#tiers"); if(tiers) tiers.onclick = e => { const b = e.target.closest("[data-t]"); if(!b || b.disabled) return; sub.tier = b.dataset.t; render(); };
+  const ready = sub.grader === "None" || (sub.grader && sub.tier);
+  setFoot(`<button class="btn btn-ghost" id="back">Back</button><span class="sum"></span><button class="btn btn-red" id="next" ${ready?"":"disabled"}>Next: add cards</button>`);
+  $("#back").onclick = () => go("customer");
+  $("#next").onclick = () => go("cards");
+}
+
+function cards(){
+  setSteps(2);
+  const t = calc(), tier = tierObj(), noGrade = sub.grader === "None";
+  const rows = sub.cards.map((c, i) => {
+    const over = tier && tier.max && +c.value > +tier.max;
+    return `<div class="cardrow">
+      <div class="thumb" style="${c.front ? `background-image:url(${c.front})` : ""}">${c.front ? "" : "No photo"}</div>
+      <div>
+        <h3>${esc(c.name || "Untitled card")}</h3>
+        <div class="meta">${esc([c.year, c.set, c.number && "#"+c.number, c.variant].filter(Boolean).join(", "))}${c.value ? ` &nbsp;Declared ${money(c.value)}` : ""}</div>
+        <div class="tags"><span class="tag">${esc(c.category)}</span>
+          ${c.clean ? '<span class="tag rr">Prep</span>' : ""}${c.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${c.repair ? `<span class="tag rr">Repair: ${esc(REPAIR_TYPES[c.repairType] || "quote")}</span>` : ""}
+          ${over ? `<span class="tag warn">Over ${esc(sub.tier)} limit</span>` : ""}${isGem(c) ? `<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service +${money(gemFee(c))}</span>` : ""}${hasMag(c) ? '<span class="tag">Mag slab case</span>' : ""}</div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn btn-line btn-sm" data-edit="${i}">Edit</button><button class="btn btn-ghost btn-sm" data-del="${i}" aria-label="Remove ${esc(c.name)}">Remove</button></div>
+    </div>`; }).join("");
+  $("#app").innerHTML = `<main>
+    <div class="screen-head"><h2>Add your cards</h2><p>${noGrade ? "Add each card you want prepped." : `Each card goes to ${esc(sub.grader)} ${esc(sub.tier)}. Add a full evaluation or prep to any card.`}</p></div>
+    ${sub.cards.length > 1 ? `<div class="bulk"><span>All cards:</span>
+      <button class="btn btn-line btn-sm" data-bulk="clean">${sub.cards.every(c=>c.clean) ? "Remove prep" : "Add prep"}</button>
+      <button class="btn btn-line btn-sm" data-bulk="eval">${sub.cards.every(c=>c.eval) ? "Remove full evaluation" : "Add full evaluation"}</button>
+      ${noGrade ? "" : `<button class="btn btn-line btn-sm" data-bulk="mag">${sub.cards.filter(canMag).every(c=>c.mag) ? "Remove mag cases" : "Add mag cases"}</button>`}</div>` : ""}
+    <div class="panel">${rows || `<div class="empty"><h3>No cards yet</h3><p style="margin:8px 0 20px">Add the first card to this submission.</p></div>`}
+      <div style="margin-top:${rows ? 16 : 0}px;text-align:center"><button class="btn btn-navy" id="add">Add a card</button></div>
+    </div></main>`;
+  $("#add").onclick = () => cardEditor(null);
+  $("#app").onclick = async e => {
+    const ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]"), bk = e.target.closest("[data-bulk]");
+    if(ed) cardEditor(+ed.dataset.edit);
+    if(del){ const c = sub.cards[+del.dataset.del]; if(await confirmBox("Remove this card?", `${c.name || "This card"} will be taken off the submission.`, "Remove")){ sub.cards.splice(+del.dataset.del, 1); render(); } }
+    if(bk){ const k = bk.dataset.bulk, pool = k === "mag" ? sub.cards.filter(canMag) : sub.cards, all = pool.every(c => c[k]); pool.forEach(c => c[k] = !all); render(); }
+  };
+  setFoot(`<button class="btn btn-ghost" id="back">Back</button>
+    <span class="sum">${t.count} card${t.count===1?"":"s"} &nbsp;<b>${money(t.subtotal)}</b></span>
+    <button class="btn btn-red" id="next" ${t.count ? "" : "disabled"}>Review</button>`);
+  $("#back").onclick = () => go("grading");
+  $("#next").onclick = () => {
+    if(noGrade && !sub.cards.some(c => c.clean || c.eval || c.repair)){ toast("Pick at least one prep service, or go back and choose a grading company."); return; }
+    go("review");
+  };
+}
+
+function cardEditor(idx){
+  const isNew = idx == null;
+  const c = isNew ? { id: uid(), category: "Pokémon", year:"", set:"", name:"", number:"", variant:"", value:"", front:null, back:null, clean:false, eval:false, mag:false, repair:false, repairType:"base", repairNote:"" } : structuredClone(sub.cards[idx]);
+  modal(`
+    <h2>${isNew ? "Add a card" : "Edit card"}</h2>
+    <div class="grid" style="margin-top:18px">
+      <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">Type</span>
+        <div class="seg" id="cat">${CATEGORIES.map(o=>`<button type="button" aria-pressed="${c.category===o}">${o}</button>`).join("")}</div></div>
+      <label class="f" id="nameLbl">${c.category==="Sports" ? "Player" : "Card name"} <span class="req">*</span><input class="t" id="name" value="${esc(c.name)}" placeholder="${c.category==="Sports" ? "e.g. Shohei Ohtani" : "e.g. Charizard ex"}"></label>
+      <div class="grid g3">
+        <label class="f">Year<input class="t" id="year" inputmode="numeric" maxlength="4" value="${esc(c.year)}"></label>
+        <label class="f">Set or brand<input class="t" id="set" value="${esc(c.set)}" placeholder="e.g. Topps Chrome"></label>
+        <label class="f">Card number<input class="t" id="number" value="${esc(c.number)}"></label>
+      </div>
+      <div class="grid g2">
+        <label class="f">Parallel, variant or notes<input class="t" id="variant" value="${esc(c.variant)}" placeholder="e.g. Refractor, 1st Edition, /99"></label>
+        <label class="f">Declared value ($) <span class="req">*</span><span id="gemNote" hidden style="display:block;margin-top:4px;color:#7A5A00;font-weight:700"></span><input class="t" id="value" type="number" inputmode="decimal" min="0" step="1" value="${esc(c.value)}"></label>
+      </div>
+      <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">Photos</span>
+        <div class="photos" style="margin-top:6px">
+          <label class="photo ${c.front?"has":""}" id="pf" style="${c.front?`background-image:url(${c.front})`:""}"><span>Tap to photograph the front</span><input type="file" accept="image/*" capture="environment" data-side="front"></label>
+          <label class="photo ${c.back?"has":""}" id="pb" style="${c.back?`background-image:url(${c.back})`:""}"><span>Tap to photograph the back</span><input type="file" accept="image/*" capture="environment" data-side="back"></label>
+        </div></div>
+      ${sub.grader && sub.grader !== "None" ? `<div id="magWrap"><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">From PBG</span>
+        <div class="grid" style="margin-top:6px">
+          <label class="toggle"><input type="checkbox" id="mag" ${c.mag?"checked":""}><div><b>Matching magnetic slab case</b><span id="magSub">A magnetic case sized for your ${esc(sub.grader)} slab, handed to you with the slab at pickup. Only with a grading submission.</span></div><span class="amt">${money(settings.magPrice)}</span></label>
+        </div></div>` : ""}
+      <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">Prep by our partner, Restored Rarity TCG</span>
+        <div class="grid" style="margin-top:6px">
+          <label class="toggle"><input type="checkbox" id="clean" ${c.clean?"checked":""}><div><b>Prep</b><span>Cleaning and grading prep by a restoration professional who knows each grading company's requirements.</span></div><span class="amt">${money(settings.prepPrice)}</span></label>
+          <label class="toggle"><input type="checkbox" id="eval" ${c.eval?"checked":""}><div><b>Full evaluation with magnification <small style="color:var(--red);font-weight:800">PBG partner rate</small></b><span>A professional pre-grader checks centering, corners, edges and surface under magnification before it ships.</span></div><span class="amt">${money(settings.evalPrice)}</span></label>
+          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity</b><span>Sent to Restored Rarity as its own repair submission. They quote it first and bill it directly; nothing is done without your OK.</span></div><span class="amt">Quote</span></label>
+          <div id="rnWrap" ${c.repair?"":"hidden"} class="grid g2">
+            <label class="f">Repair type<select class="t" id="repairType">${Object.entries(REPAIR_TYPES).map(([k, l]) => `<option value="${k}" ${c.repairType===k?"selected":""}>${esc(l)}</option>`).join("")}</select></label>
+            <label class="f">What needs fixing?<input class="t" id="repairNote" value="${esc(c.repairNote)}" placeholder="e.g. light crease, bent corner"></label>
+          </div>
+        </div></div>
+      <div class="err" id="cerr" hidden></div>
+    </div>
+    <div class="acts"><button class="btn btn-line" data-x>Cancel</button><button class="btn btn-red" data-s>${isNew ? "Add card" : "Save card"}</button></div>`,
+  (m, close) => {
+    $("#cat", m).onclick = e => { const b = e.target.closest("button"); if(!b) return; c.category = b.textContent; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b));
+      $("#nameLbl", m).firstChild.textContent = (c.category==="Sports" ? "Player" : "Card name") + " "; $("#name", m).placeholder = c.category==="Sports" ? "e.g. Shohei Ohtani" : "e.g. Charizard ex"; };
+    $("#repair", m).onchange = e => $("#rnWrap", m).hidden = !e.target.checked;
+    const gemNote = () => { const v = +$("#value", m).value || 0, el = $("#gemNote", m), f = (sub.grader && sub.grader !== "None") ? gemFeeFor(v) : 0;
+      el.hidden = !f; if(f) el.textContent = `Gem service +${money(f)}, includes a magnetic case`;
+      const mg = $("#mag", m); if(mg){ mg.disabled = !!f; if(f) mg.checked = false; $("#magSub", m).textContent = f ? "Already included with the gem service on this card." : `A magnetic case sized for your ${sub.grader} slab, handed to you with the slab at pickup. Only with a grading submission.`; } };
+    $("#value", m).addEventListener("input", gemNote); gemNote();
+    m.querySelectorAll("input[type=file]").forEach(inp => inp.onchange = async e => {
+      const f = e.target.files[0]; if(!f) return; const lbl = e.target.parentElement;
+      try{ const r = await compress(f), side = e.target.dataset.side; c[side] = r.full; if(side === "front") c.thumb = r.thumb; lbl.style.backgroundImage = `url(${r.full})`; lbl.classList.add("has"); }
+      catch(err){ toast(err.message); }
+    });
+    $("[data-x]", m).onclick = close;
+    $("[data-s]", m).onclick = () => {
+      ["name","year","set","number","variant","value","repairNote"].forEach(k => c[k] = $("#"+k, m).value.trim());
+      ["clean","eval","repair"].forEach(k => c[k] = $("#"+k, m).checked);
+      c.mag = !!($("#mag", m) && $("#mag", m).checked);
+      c.repairType = $("#repairType", m).value;
+      const errs = [];
+      $("#name", m).classList.toggle("bad", !c.name); if(!c.name) errs.push(c.category==="Sports" ? "the player" : "the card name");
+      const badVal = c.value === "" || isNaN(+c.value) || +c.value < 0; $("#value", m).classList.toggle("bad", badVal); if(badVal) errs.push("a declared value (0 is OK)");
+      if(errs.length){ const e = $("#cerr", m); e.hidden = false; e.textContent = "Please enter " + errs.join(" and ") + "."; return; }
+      if(isNew) sub.cards.push(c); else sub.cards[idx] = c;
+      close(); render();
+    };
+    // Pokémon card-name suggestions (same list as restoredraritytcg.com); picking one fills year, set and number
+    if(window.RRCardSearch) RRCardSearch.attach($("#name", m), {
+      enabled: () => c.category === "Pokémon",
+      fill: x => { $("#year", m).value = x.year ? String(x.year) : ""; $("#set", m).value = x.set || ""; $("#number", m).value = x.number || ""; }
+    });
+    setTimeout(() => $("#name", m).focus(), 50);
+  });
+}
+
+function review(){
+  setSteps(3);
+  const t = calc(), tier = tierObj(), noGrade = sub.grader === "None", c = sub.customer;
+  const over = tier && tier.max ? sub.cards.filter(x => +x.value > +tier.max) : [];
+  $("#app").innerHTML = `<main>
+    <div class="screen-head"><h2>Review and sign</h2><p>Check everything over, then sign below.</p></div>
+    <div class="panel">
+      <div class="grid g2" style="margin-bottom:18px;font-size:16px">
+        <div><span style="color:var(--steel)">Customer</span><br><b>${esc(c.first)} ${esc(c.last)}</b><br>${esc(c.phone)}${c.email ? "<br>" + esc(c.email) : ""}${c.address ? "<br>" + esc(c.address) : ""}<br>Reach by ${esc(c.contact.toLowerCase())}</div>
+        <div><span style="color:var(--steel)">Grading</span><br><b>${noGrade ? "No grading, prep only" : `${esc(sub.grader)} ${esc(sub.tier)}`}</b>${!noGrade ? `<br>${money(t.gradeEach)} per card` : ""}</div>
+      </div>
+      <div style="overflow-x:auto"><table class="sum">
+        <thead><tr><th>Card</th><th class="n">Declared</th>${noGrade?"":'<th class="n">Grading</th>'}<th class="n">Full eval</th><th class="n">Prep</th><th>Repair</th></tr></thead>
+        <tbody>${sub.cards.map(x => `<tr><td><b>${esc(x.name)}</b><br><span style="color:var(--steel);font-size:14px">${esc([x.year, x.set, x.number && "#"+x.number, x.variant].filter(Boolean).join(", "))}</span></td>
+          <td class="n">${money(+x.value||0)}</td>${noGrade?"":`<td class="n">${money(t.gradeEach)}</td>`}
+          <td class="n">${x.eval ? money(settings.evalPrice) : "None"}</td><td class="n">${x.clean ? money(settings.prepPrice) : "None"}</td>
+          <td>${x.repair ? esc(REPAIR_TYPES[x.repairType] || "Repair") + (x.repairNote ? ": " + esc(x.repairNote) : "") : "None"}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <div class="totals">
+        ${noGrade ? "" : `<div><span>Grading (${t.count})</span><span>${money(t.grading)}</span></div>`}
+        ${t.evals ? `<div><span>Full evaluations (${t.evalCount})</span><span>${money(t.evals)}</span></div>` : ""}
+        ${t.cleaning ? `<div><span>Prep (${t.prepCount})</span><span>${money(t.cleaning)}</span></div>` : ""}
+        ${t.gems ? `<div><span>Gem service with magnetic case (${t.gemCount})</span><span>${money(t.gems)}</span></div>` : ""}
+        ${t.mags ? `<div><span>Magnetic slab cases, at pickup (${t.magCount})</span><span>${money(t.mags)}</span></div>` : ""}
+        ${t.repairs ? `<div><span>Repairs sent to Restored Rarity (${t.repairs})</span><span>Quoted by Restored Rarity</span></div>` : ""}
+        ${t.tax ? `<div><span>Tax</span><span>${money(t.tax)}</span></div>` : ""}
+        <div class="grand"><span>Total</span><span>${money(t.total)}</span></div>
+      </div>
+      ${over.length ? `<div class="notice" style="margin-top:16px">${over.length} card${over.length>1?"s are":" is"} declared above the ${esc(sub.tier)} limit of ${money(tier.max)}. The shop will confirm the right service level with you before submitting.</div>` : ""}
+    </div>
+
+    ${sub.cards.some(x => x.eval) && !noGrade ? `<div class="panel" style="margin-top:16px">
+      <h3>If the full evaluation says a card isn't worth grading</h3>
+      <div class="seg" id="iflow" style="margin-top:12px">${IF_LOW.map(([k,l]) => `<button type="button" data-k="${k}" aria-pressed="${sub.ifLowGrade===k}">${l}</button>`).join("")}</div>
+    </div>` : ""}
+
+    <div class="panel" style="margin-top:16px">
+      <h3>Payment</h3>
+      <div class="grid g2" style="margin-top:12px">
+        <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">When</span>
+          <div class="seg" id="payWhen">${[["dropoff","Paid at drop-off"],["pickup","Pay at pickup"]].map(([k,l]) => `<button type="button" data-k="${k}" aria-pressed="${sub.payment.when===k}">${l}</button>`).join("")}</div></div>
+        <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">Method</span>
+          <div class="seg" id="payHow">${["Card","Cash","Other"].map(k => `<button type="button" data-k="${k}" aria-pressed="${sub.payment.method===k}">${k}</button>`).join("")}</div></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h3>Terms</h3>
+      <div class="terms" style="margin-top:12px">${esc(settings.terms)}</div>
+      <label class="toggle" style="margin-top:14px"><input type="checkbox" id="agree" ${sub.agreed?"checked":""}><div><b>I agree to these terms</b></div></label>
+      <label class="toggle" style="margin-top:10px;border:2px solid var(--red);border-radius:12px;padding:10px 12px"><input type="checkbox" id="agreePickup" ${sub.agreedPickup?"checked":""}><div><b>I understand the pickup policy</b><span>Free storage for ${PICKUP.freeDays} days after my ready notice, then $${PICKUP.feePerCardPerDay} per card per day. If I haven't picked up ${PICKUP.finalNoticeDay} days after the ready notice, PBG will send a final notice by certified mail. If I don't pick up and pay by that notice's deadline (day 90 or later), my cards become PBG's and may be sold from day 91. <b>PBG keeps the entire sale price, including anything above what I owe.</b> I can only ask for a refund of the grading fees I paid at drop-off.</span></div></label>
+      ${sub.cards.some(c => c.repair) ? `<label class="toggle" style="margin-top:10px"><input type="checkbox" id="agreeRR" ${sub.agreedRR?"checked":""}><div><b>For my repair cards, I agree to Restored Rarity's Terms &amp; Conditions</b><span>Read them at restoredraritytcg.com. Restored Rarity will email or text you a quote before any work.</span></div></label>` : ""}
+      <div style="margin-top:14px;max-width:480px">
+        <label class="f">Your full name <span class="req">*</span><input class="t" id="signedName" value="${esc(sub.signedName || (c.first+" "+c.last))}"></label>
+      </div>
+      <div class="sig"><canvas id="sig" aria-label="Signature pad"></canvas><span class="hint">Sign here</span><button class="btn btn-ghost btn-sm clear" id="clearSig">Clear</button></div>
+      <div class="err" id="rerr" hidden></div>
+    </div></main>`;
+
+  const seg = (id, set) => { const el = $("#"+id); if(!el) return; el.onclick = e => { const b = e.target.closest("button"); if(!b) return; set(b.dataset.k); [...el.children].forEach(x => x.setAttribute("aria-pressed", x===b)); }; };
+  seg("iflow", k => sub.ifLowGrade = k); seg("payWhen", k => sub.payment.when = k); seg("payHow", k => sub.payment.method = k);
+  const pad = sigPad($("#sig")); $("#clearSig").onclick = () => pad.clear();
+
+  setFoot(`<button class="btn btn-ghost" id="back">Back</button><span class="sum">${t.count} card${t.count===1?"":"s"} &nbsp;<b>${money(t.total)}</b></span><button class="btn btn-red" id="submit">Hand to PBG staff</button>`);
+  $("#back").onclick = () => { sub.agreed = $("#agree").checked; sub.agreedPickup = $("#agreePickup").checked; sub.signedName = $("#signedName").value; go("cards"); };
+  $("#submit").onclick = async () => {
+    sub.agreed = $("#agree").checked; sub.agreedPickup = $("#agreePickup").checked; sub.signedName = $("#signedName").value.trim();
+    const rrBox = $("#agreeRR"); sub.agreedRR = rrBox ? rrBox.checked : false;
+    const errs = [];
+    if(!sub.agreed) errs.push("check the box to agree to the terms");
+    if(!sub.agreedPickup) errs.push("check the box for the pickup policy");
+    if(rrBox && !sub.agreedRR) errs.push("agree to Restored Rarity's terms for your repair cards");
+    if(!sub.signedName) errs.push("type your full name");
+    if(pad.empty()) errs.push("sign in the box");
+    if(errs.length){ const e = $("#rerr"); e.hidden = false; e.textContent = "To finish, please " + errs.join(", ") + "."; return; }
+    sub.signature = pad.data();
+    go("staffcheck");
+  };
+}
+
+/* ---------------- staff check: an employee reviews the cards and accepts them with their 4-digit code ---------------- */
+async function hashCode(code){
+  const data = new TextEncoder().encode("pbg-employee:" + code);
+  if(window.crypto && crypto.subtle){ const buf = await crypto.subtle.digest("SHA-256", data); return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join(""); }
+  let h = 0; for(const b of data) h = (h * 31 + b) >>> 0; return "x" + h.toString(16);   // fallback for non-secure pages
+}
+async function findEmployee(code){
+  const h = await hashCode(code);
+  const emp = (settings.employees || []).find(e => e.hash === h);
+  if(emp) return emp.name;
+  if(!(settings.employees || []).length && code === settings.pin) return "Manager";
+  return null;
+}
+function staffcheck(){
+  setSteps(4);
+  const t = calc(), c = sub.customer, noGrade = sub.grader === "None", paidNow = sub.payment.when === "dropoff";
+  const checks = [
+    ["count", `Card count matches: <strong>${t.count} card${t.count===1?"":"s"}</strong> in hand`],
+    ["match", "Each card matches its photo, name and set"],
+    ["value", noGrade ? "Prep services are correct for each card" : `Declared values fit ${esc(sub.grader)} ${esc(sub.tier)}`],
+    ...(paidNow ? [["paid", `Payment collected: <strong>${money(t.total)}</strong> by ${esc(sub.payment.method.toLowerCase())}`]] : [])
+  ];
+  let code = "";
+  const noEmp = !(settings.employees || []).length;
+  $("#app").innerHTML = `<main>
+    <div class="screen-head"><h2>Staff check</h2><p>Customer: please hand the iPad to a PBG employee. Employee: check the cards against this list, then enter your 4-digit code to accept them.</p></div>
+    <div class="grid g2" style="align-items:start">
+      <div class="panel">
+        <h3>${esc(c.first)} ${esc(c.last)}</h3>
+        <p style="color:var(--steel);font-size:15px;margin-top:4px">${esc(c.phone)}${c.email ? " &nbsp; " + esc(c.email) : ""}<br>${noGrade ? "No grading, prep only" : `${esc(sub.grader)} ${esc(sub.tier)}`} &nbsp; Total ${money(t.total)}${paidNow ? "" : ", due at pickup"}</p>
+        <div style="margin-top:10px">${sub.cards.map((x, i) => `<div class="cardrow" style="grid-template-columns:64px 1fr">
+          <div class="thumb" style="width:64px;height:88px;${x.front ? `background-image:url(${x.thumb || x.front})` : ""}">${x.front ? "" : "No photo"}</div>
+          <div><b>${i+1}. ${esc(x.name)}</b><div class="meta">${esc([x.year, x.set, x.number && "#"+x.number, x.variant, "Declared " + money(+x.value||0)].filter(Boolean).join(", "))}</div>
+          <div class="tags">${isGem(x) ? '<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service</span>' : ""}${hasMag(x) ? '<span class="tag">Mag slab case</span>' : ""}${x.clean ? '<span class="tag rr">Prep</span>' : ""}${x.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${x.repair ? '<span class="tag rr">Repair quote</span>' : ""}</div></div></div>`).join("")}</div>
+      </div>
+      <div class="panel">
+        <h3>Before you accept</h3>
+        <div class="grid" style="margin-top:12px;gap:10px">${checks.map(([k, l]) => `<label class="toggle"><input type="checkbox" data-chk="${k}"><div style="color:var(--navy)">${l}</div></label>`).join("")}</div>
+        <h3 style="margin-top:22px">Your employee code</h3>
+        ${noEmp ? `<p class="notice" style="margin-top:8px">No employee codes are set up yet, so the manager PIN works here. Add employees under Staff &gt; Settings.</p>` : ""}
+        <div class="pindots" id="cdots">${"<i></i>".repeat(4)}</div>
+        <div class="pinpad" id="cpad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k => k==="" ? "<span></span>" : `<button type="button" data-k="${k}" aria-label="${k==="⌫"?"Delete":k}">${k}</button>`).join("")}</div>
+        <p class="err" id="cerr2" style="text-align:center" hidden></p>
+      </div>
+    </div></main>`;
+  const dots = () => [...$("#cdots").children].forEach((d, i) => d.classList.toggle("f", i < code.length));
+  const ready = () => { const all = [...document.querySelectorAll("[data-chk]")].every(x => x.checked); $("#accept").disabled = !(all && code.length === 4); };
+  document.querySelectorAll("[data-chk]").forEach(x => x.onchange = ready);
+  $("#cpad").onclick = e => { const b = e.target.closest("button"); if(!b) return; $("#cerr2").hidden = true;
+    code = b.dataset.k === "⌫" ? code.slice(0, -1) : (code + b.dataset.k).slice(0, 4); dots(); ready(); };
+  setFoot(`<button class="btn btn-ghost" id="back">Return to customer</button><span class="sum">${t.count} card${t.count===1?"":"s"} &nbsp;<b>${money(t.total)}</b></span><button class="btn btn-red" id="accept" disabled>Accept cards</button>`);
+  $("#back").onclick = () => go("review");
+  $("#accept").onclick = async () => {
+    const b = $("#accept"); b.disabled = true;
+    const name = await findEmployee(code);
+    if(!name){ code = ""; dots(); const e = $("#cerr2"); e.hidden = false; e.textContent = "That code doesn't match an employee. Try again."; return; }
+    b.textContent = "Saving…";
+    sub.staff = name; sub.receivedBy = name; sub.staffCheckedAt = new Date().toISOString();
+    sub.cards.forEach(c => { c.gemFee = gemFee(c); c.gem = c.gemFee > 0; c.mag = hasMag(c); });
+    sub.ticket = newTicket(); sub.publicToken = PBG.newToken(); sub.createdAt = new Date().toISOString(); sub.totals = calc();
+    await DB.put(sub);
+    go("done");
+    syncOne(sub).then(() => { if(step === "done") renderSyncBadge(); refreshPills(); });
+  };
+}
+
+function sigPad(cv){
+  const ctx = cv.getContext("2d"); let drawing = false, dirty = false, last = null;
+  function size(){ const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = r.width*d; cv.height = r.height*d; ctx.scale(d,d); ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#141414"; }
+  size();
+  const pt = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  cv.addEventListener("pointerdown", e => { drawing = true; dirty = true; last = pt(e); cv.setPointerCapture(e.pointerId); cv.nextElementSibling.hidden = true; });
+  cv.addEventListener("pointermove", e => { if(!drawing) return; const p = pt(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last = p; });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev => cv.addEventListener(ev, () => drawing = false));
+  return { clear(){ ctx.clearRect(0,0,cv.width,cv.height); dirty = false; cv.nextElementSibling.hidden = false; }, empty: () => !dirty, data: () => cv.toDataURL("image/png") };
+}
+
+let doneTimer;
+function done(){
+  setSteps(null);
+  const t = sub.totals, c = sub.customer;
+  $("#app").innerHTML = `<main><div class="panel ticket">
+    <p>Thanks, ${esc(c.first)}. Your ticket number is</p>
+    <div class="num">${esc(sub.ticket)}</div>
+    <p>${t.count} card${t.count===1?"":"s"} ${sub.grader==="None" ? (sub.cards.every(x => x.repair && !x.clean && !x.eval) ? "checked in for a Restored Rarity repair" : "checked in for prep") : `for ${esc(sub.grader)} ${esc(sub.tier)}`}.${t.total > 0 ? ` Total ${money(t.total)}${sub.payment.when==="pickup" ? ", due at pickup" : ", paid"}.` : " Nothing is due at PBG."}</p>
+    <p style="margin-top:6px">We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.</p>
+    ${sub.cards.some(x => x.repair) ? `<p class="notice" style="margin-top:16px;text-align:left">Your repair request is going to Restored Rarity. You'll get a confirmation from them with your own Restored Rarity link, and they'll quote the repair before doing any work.</p>` : ""}
+    <div class="qr"><div class="code" id="qr"></div><p><b>Track your order</b><br>Scan this code to see your cards move through each grading stage. The link is printed on your receipt too.</p></div>
+    <div id="syncBadge"></div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px">
+      <button class="btn btn-line" id="printBtn">Print receipt</button>
+      <button class="btn btn-red" id="next">Start the next customer</button>
+    </div>
+    <p style="margin-top:22px;font-size:15px">Please hand the iPad back to the counter.</p>
+  </div></main>`;
+  renderSyncBadge(); drawQR($("#qr"), PBG.statusUrl(sub.publicToken));
+  setFoot(null);
+  $("#printBtn").onclick = () => printReceipt(sub);
+  $("#next").onclick = () => { clearTimeout(doneTimer); go("welcome"); };
+  clearTimeout(doneTimer); doneTimer = setTimeout(() => { if(step === "done") go("welcome"); }, 3*60*1000);
+}
+function renderSyncBadge(){
+  const el = $("#syncBadge"); if(!el) return;
+  if(PBG.mode === "demo") el.innerHTML = `<span class="sync wait">Demo mode: saved on this iPad only. Connect Supabase to go live.</span>`;
+  else if(sub.synced) el.innerHTML = `<span class="sync ok">Saved to the PBG order system</span>`;
+  else el.innerHTML = `<span class="sync wait">${sub.syncError ? "Saved on this iPad. Upload will retry automatically." : "Uploading…"}</span>`;
+}
+
+async function printReceipt(s){
+  const t = s.totals, c = s.customer;
+  $("#print").innerHTML = `<h1>PBG Cards & Collectibles HTX</h1>
+    <div>25170 I-45 N, Unit 9, Spring, TX 77386 &nbsp; 832-610-7081</div>
+    <div class="tn">${esc(s.ticket)}</div>
+    <div>${new Date(s.createdAt).toLocaleString()} &nbsp; Received by: ${esc(s.staff)}</div>
+    <div><b>${esc(c.first)} ${esc(c.last)}</b> &nbsp; ${esc(c.phone)} ${esc(c.email)}</div>
+    <div>Grading: ${s.grader==="None" ? "None (prep only)" : esc(s.grader+" "+s.tier)}</div>
+    <table><tr><th>Card</th><th>Declared</th><th>Services</th></tr>
+    ${s.cards.map(x => `<tr><td>${esc([x.year,x.set,x.name,x.number&&"#"+x.number,x.variant].filter(Boolean).join(" "))}</td><td>${money(+x.value||0)}</td><td>${[x.gem&&"Gem service + magnetic case",x.mag&&"Magnetic slab case at pickup",x.eval&&"Full evaluation",x.clean&&"Prep",x.repair&&"Repair quote"].filter(Boolean).join(", ")||"None"}</td></tr>`).join("")}</table>
+    <p style="margin-top:10pt">Total: <b>${money(t.total)}</b> (${s.payment.when==="pickup" ? "due at pickup" : "paid, " + esc(s.payment.method)})</p>
+    <p>Prep services by Restored Rarity TCG. Bring this ticket number and a photo ID to pick up.</p>
+    <div style="display:flex;gap:14pt;align-items:center;margin-top:10pt"><div id="printQR" style="width:110pt;height:110pt"></div>
+      <p style="font-size:10pt">${s.publicToken ? "Track your order:<br>" + esc(PBG.statusUrl(s.publicToken)) : ""}</p></div>`;
+  if(s.publicToken) await drawQR($("#printQR"), PBG.statusUrl(s.publicToken));
+  try{ window.print(); }catch(e){ toast("Printing isn't available here."); }
+}
+
+async function cancelFlow(){
+  if(await confirmBox("Cancel this submission?", "Everything entered so far will be cleared.", "Cancel submission", "Keep going")) go("welcome");
+}
+
+/* ---------------- QR code (library loads from CDN, cached by the app for offline use) ---------------- */
+let qrLib = null;
+function loadQR(){
+  if(window.qrcode) return Promise.resolve();
+  return qrLib || (qrLib = new Promise((res, rej) => { const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"; sc.onload = res; sc.onerror = () => { qrLib = null; rej(); }; document.head.appendChild(sc); }));
+}
+async function drawQR(el, text){
+  if(!el) return;
+  try{ await loadQR(); const q = qrcode(0, "M"); q.addData(text); q.make(); el.innerHTML = q.createImgTag(6, 8); el.querySelector("img").alt = "QR code for your order status"; }
+  catch(e){ el.innerHTML = `<span style="font-size:12px;color:var(--steel);text-align:center">QR code needs internet. Use the link on the receipt.</span>`; }
+}
+
+/* ---------------- sync to the PBG order system (Supabase) ---------------- */
+async function syncOne(s){
+  if(s.synced) return;
+  try{
+    await PBG.init();
+    if(PBG.mode === "live" && !(await PBG.currentStaff())) throw new Error("The iPad isn't signed in. Open Staff > Settings and sign in.");
+    if(!s.publicToken) s.publicToken = PBG.newToken();
+    if(!s.synced){ await PBG.submitOrder(s); s.synced = true; }
+    s.syncError = null;
+  }catch(e){ s.syncError = String(e.message || e); }
+  // Repair cards also go to Restored Rarity's website as their own submission
+  if(s.cards.some(c => c.repair) && !s.rrSynced){
+    try{ const r = await RR.pushRepairs(s); s.rrCode = r.code; s.rrLink = r.link; s.rrSynced = true; s.rrError = null;
+      if(s.synced) await PBG.linkRestoredRarity(s.ticket, r.code).catch(() => {}); }
+    catch(e){ s.rrError = String(e.message || e); }
+  }
+  await DB.put(s);
+}
+let syncing = false;
+async function syncAll(){
+  if(syncing || !navigator.onLine) return; syncing = true;
+  try{ for(const s of (await DB.all()).filter(x => !x.synced || (x.cards.some(c => c.repair) && !x.rrSynced))) await syncOne(s); } finally { syncing = false; }
+  refreshPills();
+}
+window.addEventListener("online", syncAll);
+setInterval(syncAll, 2*60*1000);
+
+/* ---------------- staff area ---------------- */
+$("#staffBtn").onclick = () => {
+  let entry = "";
+  modal(`<h2 style="text-align:center">Staff PIN</h2><div class="pindots" id="dots">${"<i></i>".repeat(4)}</div>
+    <div class="pinpad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k => k==="" ? "<span></span>" : `<button data-k="${k}">${k}</button>`).join("")}</div>
+    <p class="err" id="pinErr" style="text-align:center" hidden>That PIN didn't match. Try again.</p>
+    <div class="acts" style="justify-content:center"><button class="btn btn-ghost" data-x>Close</button></div>`,
+  (m, close) => {
+    const n = settings.pin.length; $("#dots", m).innerHTML = "<i></i>".repeat(n);
+    $("[data-x]", m).onclick = close;
+    $(".pinpad", m).onclick = e => {
+      const b = e.target.closest("button"); if(!b) return;
+      entry = b.dataset.k === "⌫" ? entry.slice(0,-1) : (entry + b.dataset.k).slice(0, n);
+      [...$("#dots", m).children].forEach((d,i) => d.classList.toggle("f", i < entry.length));
+      if(entry.length === n){
+        if(entry === settings.pin){ close(); staff("subs"); }
+        else { $("#pinErr", m).hidden = false; entry = ""; setTimeout(() => [...$("#dots", m).children].forEach(d => d.classList.remove("f")), 200); }
+      }
+    };
+  });
+};
+
+async function staff(tab){
+  step = "staff"; setSteps(null); $("#app").onclick = null;
+  const all = (await DB.all()).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  $("#app").innerHTML = `<main>
+    <div class="screen-head" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><h2 style="margin-right:auto">Staff</h2>
+      <div class="tabs" style="margin:0"><button class="btn btn-sm ${tab==="subs"?"btn-navy":"btn-line"}" data-tab="subs">Submissions</button><button class="btn btn-sm ${tab==="settings"?"btn-navy":"btn-line"}" data-tab="settings">Settings</button></div></div>
+    <div id="staffBody"></div></main>`;
+  $(".tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if(b) staff(b.dataset.tab); };
+  setFoot(`<span class="sum">Staff mode</span><button class="btn btn-red" id="exit">Back to customer screen</button>`);
+  $("#exit").onclick = () => go("welcome");
+  tab === "subs" ? staffSubs(all) : staffSettings();
+}
+
+function staffSubs(all){
+  const pend = all.filter(s => !s.synced || (s.cards.some(c => c.repair) && !s.rrSynced)).length;
+  $("#staffBody").innerHTML = `
+    ${PBG.mode === "demo" ? `<div class="notice">Demo mode. Submissions stay on this iPad until Supabase is connected in pbg-config.js.</div>` : ""}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      ${pend ? `<button class="btn btn-navy btn-sm" id="retry">Upload ${pend} waiting</button>` : ""}
+      <button class="btn btn-line btn-sm" id="csv">Copy as CSV</button>
+      ${window.PBG_CONFIG && PBG_CONFIG.staffUrl ? `<a class="btn btn-navy btn-sm" href="${esc(PBG_CONFIG.staffUrl)}">Open staff portal</a>` : ""}
+    </div>
+    <div class="panel list">
+      ${all.length ? `<div class="row h"><span>Ticket</span><span>Customer</span><span>Cards</span><span>Total</span><span>Upload</span></div>` +
+      all.map(s => `<div class="row"><span><b>${esc(s.ticket)}</b><br><small style="color:var(--steel)">${new Date(s.createdAt).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small></span>
+        <span>${esc(s.customer.first+" "+s.customer.last)}<br><small style="color:var(--steel)">${esc(s.customer.phone)}</small></span>
+        <span>${s.cards.length}${hasPartnerWork(s) ? ' <span class="tag rr">RR</span>' : ""}</span><span>${money(s.totals.total)}</span>
+        <span><span class="tag ${s.synced ? "" : "warn"}">${s.synced ? "Uploaded" : "On iPad"}</span> <button class="btn btn-ghost btn-sm" data-v="${esc(s.ticket)}">View</button></span></div>`).join("")
+      : `<div class="empty"><h3>No submissions yet</h3><p style="margin-top:6px">Submissions taken on this iPad show up here.</p></div>`}
+    </div>`;
+  const r = $("#retry"); if(r) r.onclick = async () => { r.disabled = true; r.textContent = "Uploading…"; await syncAll(); staff("subs"); };
+  $("#csv").onclick = async () => {
+    const rows = [["Ticket","Date","First","Last","Phone","Email","Grader","Tier","Card","Year","Set","Number","Variant","Declared","Prep","Full evaluation","Repair","Repair note","Ticket total","Payment","Staff","Uploaded"]];
+    all.forEach(s => s.cards.forEach(c => rows.push([s.ticket, s.createdAt, s.customer.first, s.customer.last, s.customer.phone, s.customer.email, s.grader, s.tier||"", c.name, c.year, c.set, c.number, c.variant, c.value, c.clean?"Y":"", c.eval?"Y":"", c.repair?"Y":"", c.repairNote, s.totals.total.toFixed(2), s.payment.when+"/"+s.payment.method, s.staff, s.synced?"Y":"N"])));
+    const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
+    try{ await navigator.clipboard.writeText(csv); toast("CSV copied. Paste it into a spreadsheet."); }catch(e){ toast("Couldn't copy here. Use the staff portal instead."); }
+  };
+  $("#staffBody").onclick = e => { const b = e.target.closest("[data-v]"); if(!b) return; const s = all.find(x => x.ticket === b.dataset.v); viewSub(s); };
+}
+
+function viewSub(s){
+  const c = s.customer;
+  modal(`<h2>${esc(s.ticket)}</h2>
+    <p style="color:var(--steel);margin-top:6px">${new Date(s.createdAt).toLocaleString()} &nbsp; Received by ${esc(s.staff)}</p>
+    <div class="grid g2" style="margin-top:16px;font-size:16px">
+      <div><b>${esc(c.first)} ${esc(c.last)}</b><br>${esc(c.phone)}<br>${esc(c.email)}<br>Reach by ${esc(c.contact)}${c.notes ? "<br><i>" + esc(c.notes) + "</i>" : ""}</div>
+      <div>${s.grader==="None" ? "Prep only" : esc(s.grader+" "+s.tier)}<br>Total ${money(s.totals.total)}<br>${s.payment.when==="pickup" ? "Due at pickup" : "Paid"} (${esc(s.payment.method)})${s.cards.some(x=>x.eval) ? "<br>If eval is low: " + esc((IF_LOW.find(x=>x[0]===s.ifLowGrade)||[])[1]) : ""}</div>
+    </div>
+    <div style="margin-top:16px">${s.cards.map(x => `<div class="cardrow"><div class="thumb" style="${x.front?`background-image:url(${x.front})`:""}">${x.front?"":"No photo"}</div>
+      <div><h3>${esc(x.name)}</h3><div class="meta">${esc([x.category,x.year,x.set,x.number&&"#"+x.number,x.variant].filter(Boolean).join(", "))}, declared ${money(+x.value||0)}</div>
+      <div class="tags">${x.clean?'<span class="tag rr">Prep</span>':""}${x.eval?'<span class="tag rr">Full evaluation</span>':""}${x.repair?`<span class="tag rr">Repair: ${esc(x.repairNote||"quote")}</span>`:""}</div></div><span></span></div>`).join("")}</div>
+    ${s.signature ? `<p style="margin-top:12px;color:var(--steel);font-size:14px">Signed by ${esc(s.signedName)}</p><img src="${s.signature}" alt="Customer signature" style="max-width:320px;border:1px solid var(--line);border-radius:8px">` : ""}
+    ${s.syncError && !s.synced ? `<div class="notice" style="margin-top:12px">Last upload attempt: ${esc(s.syncError)}</div>` : ""}
+    ${s.cards.some(c => c.repair) ? `<div class="notice" style="margin-top:12px;background:#EFE9FB;color:#3B2A78">${s.rrSynced ? `Repair cards sent to Restored Rarity as <b>${esc(s.rrCode)}</b>.` : `Repair cards not sent to Restored Rarity yet${s.rrError ? ": " + esc(s.rrError) : ""}. It retries automatically.`}</div>` : ""}
+    <div class="acts"><button class="btn btn-line" data-p>Print receipt</button><button class="btn btn-navy" data-x>Close</button></div>`,
+  (m, close) => { $("[data-x]", m).onclick = close; $("[data-p]", m).onclick = () => printReceipt(s); });
+}
+
+function staffSettings(){
+  const s = structuredClone(settings);
+  const tierRow = (gi, ti, t) => `<div class="tierline" data-g="${gi}" data-t="${ti}">
+      <label class="f">Level<input class="t" data-f="name" value="${esc(t.name)}"></label>
+      <label class="f">Notes / turnaround<input class="t" data-f="eta" value="${esc(t.eta)}"></label>
+      <label class="f">Company fee $<input class="t" data-f="fee" type="number" inputmode="decimal" step="0.01" value="${esc(t.fee)}"></label>
+      <label class="f">Max value $<input class="t" data-f="max" type="number" inputmode="decimal" value="${esc(t.max)}"></label>
+      <label class="f" style="white-space:nowrap">Open<span style="display:flex;align-items:center;gap:8px;min-height:46px"><input type="checkbox" data-f="active" ${t.active === false ? "" : "checked"} style="width:24px;height:24px;accent-color:var(--navy)"><b style="font-size:15px;color:var(--navy)">${money(tierPrice(t))}</b></span></label>
+      <button class="btn btn-ghost btn-sm" data-rmt="${gi}:${ti}">Remove</button></div>`;
+  const draw = () => {
+    $("#staffBody").innerHTML = `
+      <div class="panel grid">
+        <h3>Prices</h3>
+        <div class="grid g4">
+          <label class="f">PBG handling per graded card $<input class="t" id="markup" type="number" inputmode="decimal" value="${esc(s.markup)}"></label>
+          <label class="f">Full evaluation, per card $<input class="t" id="evalPrice" type="number" inputmode="decimal" value="${esc(s.evalPrice)}"></label>
+          <label class="f">Prep, per card $<input class="t" id="prepPrice" type="number" inputmode="decimal" value="${esc(s.prepPrice)}"></label>
+          <label class="f">Sales tax %<input class="t" id="taxRate" type="number" inputmode="decimal" value="${esc(s.taxRate)}"></label>
+        </div>
+        <h3 style="margin-top:8px">Profit split</h3>
+        <p style="color:var(--steel);font-size:15px">Saved on every order for the payouts report. Grading company fees are tracked separately and aren't part of the split.</p>
+        <div class="grid g4">
+          <label class="f">PBG per graded card $<input class="t" id="spPG" type="number" inputmode="decimal" value="${esc(s.split.pbgPerGrade)}"></label>
+          <label class="f">Restored Rarity per graded card $<input class="t" id="spRG" type="number" inputmode="decimal" value="${esc(s.split.rrPerGrade)}"></label>
+          <label class="f">PBG per full evaluation $<input class="t" id="spPE" type="number" inputmode="decimal" value="${esc(s.split.pbgPerEval)}"></label>
+          <label class="f">PBG per prep $<input class="t" id="spPP" type="number" inputmode="decimal" value="${esc(s.split.pbgPerPrep)}"></label>
+        </div>
+        <h3 style="margin-top:8px">Gem service (graded cards, includes a magnetic case)</h3>
+        <div class="grid g4">${s.gemTiers.map((t, i) => `<label class="f">Over $<input class="t" data-gem-over="${i}" type="number" inputmode="decimal" value="${esc(t.over)}"></label><label class="f">Fee $<input class="t" data-gem-fee="${i}" type="number" inputmode="decimal" value="${esc(t.fee)}"></label>`).join("")}</div>
+        <h3 style="margin-top:8px">Matching magnetic slab case (graded cards only)</h3>
+        <div class="grid g4"><label class="f">Price per case $<input class="t" id="magPrice" type="number" inputmode="decimal" value="${esc(s.magPrice)}"></label>
+          <label class="f">PBG share of mag cases %<input class="t" id="spMagPct" type="number" inputmode="decimal" value="${esc(s.split.pbgMagPct ?? 100)}"></label></div>
+        <div class="grid g4"><label class="f">PBG share of gem fees %<input class="t" id="spGemPct" type="number" inputmode="decimal" value="${esc(s.split.pbgGemPct)}"></label></div>
+        <p style="font-size:15px">Restored Rarity gets <b>${money(s.evalPrice - s.split.pbgPerEval)}</b> per full evaluation, <b>${money(s.prepPrice - s.split.pbgPerPrep)}</b> per prep and <b>${100 - s.split.pbgGemPct}%</b> of gem fees (${s.gemTiers.map(t => money(t.fee * (100 - s.split.pbgGemPct) / 100)).join(", ")}).</p>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <h3>Grading companies and service levels</h3>
+        <p style="color:var(--steel);font-size:15px;margin-top:4px">Enter each company's own fee; the customer price (shown in bold) adds PBG's handling. Untick <b>Open</b> when a company pauses a level and it shows greyed out on the iPad. Fees last checked ${esc(s.pricesChecked || "")}.${s.pricingFrom ? ` Prices last saved to the order system ${esc(s.pricingFrom)}.` : ""} Saving here updates every iPad. Grading companies change prices and pauses often, so check monthly.</p>
+        ${s.graders.map((g, gi) => `<div class="grader-block">
+          <div style="display:flex;gap:10px;align-items:end"><label class="f" style="flex:1">Company<input class="t" data-gname="${gi}" value="${esc(g.name)}"></label>
+            <button class="btn btn-line btn-sm" data-addt="${gi}">Add level</button><button class="btn btn-ghost btn-sm" data-rmg="${gi}">Remove company</button></div>
+          ${g.tiers.map((t, ti) => tierRow(gi, ti, t)).join("")}</div>`).join("")}
+        <div style="margin-top:16px"><button class="btn btn-line btn-sm" id="addG">Add a grading company</button></div>
+      </div>
+      <div class="panel grid" style="margin-top:16px">
+        <h3>Connect this iPad</h3>
+        <p style="color:var(--steel);font-size:15px">One-time setup by the owner. Connect the iPad with the PBG account so submissions upload to the order system. It stays connected; employees never need to sign in.${PBG.mode === "demo" ? " Demo mode is on, so any email and password works." : ""}</p>
+        <div id="acct"></div>
+      </div>
+      <div class="panel grid" style="margin-top:16px">
+        <h3>Employees</h3>
+        <p style="color:var(--steel);font-size:15px">Each employee gets their own 4-digit code. They enter it on the staff check screen to accept a customer's cards, and their name is saved on the order. Changes here save right away.</p>
+        <div id="emps">${(s.employees || []).length ? s.employees.map((e, i) => `<div class="acct" style="justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)"><span><b>${esc(e.name)}</b> &nbsp;<span style="color:var(--steel)">code ••••</span></span><button class="btn btn-ghost btn-sm" data-rme="${i}">Remove</button></div>`).join("")
+          : `<p class="notice" style="margin:0">No employees yet. Until you add one, the manager PIN accepts cards.</p>`}</div>
+        <div class="grid" style="grid-template-columns:1fr 160px auto;align-items:end;gap:10px">
+          <label class="f">Employee name<input class="t" id="eName" autocomplete="off"></label>
+          <label class="f">4-digit code<input class="t" id="eCode" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+          <button class="btn btn-navy btn-sm" id="addEmp" style="min-height:54px">Add employee</button>
+        </div>
+      </div>
+      <div class="panel grid" style="margin-top:16px">
+        <h3>Terms customers agree to</h3>
+        <textarea class="t" id="terms" style="min-height:240px;font-size:16px">${esc(s.terms)}</textarea>
+        <label class="f" style="max-width:280px">Manager PIN for this Staff menu (4 to 6 digits)<input class="t" id="pin" inputmode="numeric" maxlength="6" value="${esc(s.pin)}"></label>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap"><button class="btn btn-red" id="save">Save settings</button><button class="btn btn-ghost" id="reset">Restore defaults</button></div>`;
+  };
+  const read = () => {
+    ["markup","evalPrice","prepPrice","taxRate","magPrice"].forEach(k => s[k] = +$("#"+k).value || 0);
+    s.split = { pbgPerGrade: +$("#spPG").value || 0, rrPerGrade: +$("#spRG").value || 0, pbgPerEval: +$("#spPE").value || 0, pbgPerPrep: +$("#spPP").value || 0, pbgGemPct: +$("#spGemPct").value || 0, pbgMagPct: $("#spMagPct").value === "" ? 100 : +$("#spMagPct").value };
+    document.querySelectorAll("[data-gem-over]").forEach(i => s.gemTiers[+i.dataset.gemOver].over = +i.value || 0);
+    document.querySelectorAll("[data-gem-fee]").forEach(i => s.gemTiers[+i.dataset.gemFee].fee = +i.value || 0);
+    ["terms","pin"].forEach(k => s[k] = $("#"+k).value.trim());
+    document.querySelectorAll("[data-gname]").forEach(i => s.graders[+i.dataset.gname].name = i.value.trim());
+    document.querySelectorAll(".tierline").forEach(r => { const t = s.graders[+r.dataset.g].tiers[+r.dataset.t];
+      r.querySelectorAll("[data-f]").forEach(i => t[i.dataset.f] = i.type === "checkbox" ? i.checked : (i.dataset.f==="fee"||i.dataset.f==="max") ? (+i.value||0) : i.value.trim()); });
+  };
+  const drawAcct = async () => {
+    const el = $("#acct"); if(!el) return;
+    const who = await PBG.currentStaff().catch(() => null);
+    el.innerHTML = who ? `<div class="acct"><span>Signed in as <b>${esc(who.name)}</b> (${esc(who.email || "")})</span><button class="btn btn-line btn-sm" id="signOut">Sign out</button></div>`
+      : `<div class="grid g2"><label class="f">Email<input class="t" id="sEmail" type="email" autocomplete="username"></label><label class="f">Password<input class="t" id="sPass" type="password" autocomplete="current-password"></label></div>
+         <div class="acct" style="margin-top:12px"><button class="btn btn-navy btn-sm" id="signIn">Sign in</button><span class="err" id="sErr" hidden></span></div>`;
+  };
+  draw(); drawAcct();
+  $("#staffBody").onclick = async e => {
+    const b = e.target.closest("button"); if(!b) return;
+    if(b.dataset.addt){ read(); s.graders[+b.dataset.addt].tiers.push({ name:"", fee:0, max:0, eta:"", active:true }); draw(); }
+    else if(b.dataset.rmt){ read(); const [gi,ti] = b.dataset.rmt.split(":").map(Number); s.graders[gi].tiers.splice(ti,1); draw(); }
+    else if(b.dataset.rmg){ read(); if(await confirmBox("Remove this grading company?", `${s.graders[+b.dataset.rmg].name} and its levels will be removed when you save.`, "Remove")){ s.graders.splice(+b.dataset.rmg,1); draw(); } }
+    else if(b.id === "addG"){ read(); s.graders.push({ name:"", tiers:[{ name:"Standard", fee:0, max:0, eta:"", active:true }] }); draw(); }
+    else if(b.id === "addEmp"){
+      const name = $("#eName").value.trim(), code = $("#eCode").value.trim();
+      if(!name){ toast("Enter the employee's name."); return; }
+      if(!/^\d{4}$/.test(code)){ toast("The code needs exactly 4 digits."); return; }
+      const h = await hashCode(code);
+      if((settings.employees || []).some(e => e.hash === h)){ toast("Another employee already uses that code. Pick a different one."); return; }
+      read(); s.employees = [...(settings.employees || []), { name, hash: h }]; settings.employees = s.employees;
+      LS.set("pbg.settings", { ...LS.get("pbg.settings", {}), employees: settings.employees }); toast(`${name} added`); draw(); drawAcct();
+    }
+    else if(b.dataset.rme){
+      const e = settings.employees[+b.dataset.rme];
+      if(!await confirmBox(`Remove ${e.name}?`, "Their code will stop working on this iPad. Orders they already accepted keep their name.", "Remove")) return;
+      read(); settings.employees = settings.employees.filter((_, i) => i !== +b.dataset.rme); s.employees = settings.employees;
+      LS.set("pbg.settings", { ...LS.get("pbg.settings", {}), employees: settings.employees }); draw(); drawAcct();
+    }
+    else if(b.id === "signIn"){
+      const err = $("#sErr"); err.hidden = true; b.disabled = true; b.textContent = "Signing in…";
+      try{ await PBG.init(); await PBG.signIn($("#sEmail").value.trim(), $("#sPass").value); await loadPricing(); toast("Signed in"); drawAcct(); refreshPills(); syncAll(); }
+      catch(x){ err.hidden = false; err.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; }
+    }
+    else if(b.id === "signOut"){
+      if(await confirmBox("Sign this iPad out?", "Submissions will stay on the iPad and won't upload until someone signs in again.", "Sign out")){ await PBG.signOut(); drawAcct(); refreshPills(); }
+    }
+    else if(b.id === "save"){
+      read();
+      if(!/^\d{4,6}$/.test(s.pin)){ toast("The PIN needs 4 to 6 digits."); return; }
+      if(s.graders.some(g => !g.name || g.tiers.some(t => !t.name))){ toast("Every company and level needs a name."); return; }
+      if(Math.abs(s.split.pbgPerGrade + s.split.rrPerGrade - s.markup) > 0.001){ toast(`PBG + Restored Rarity per graded card should add up to the $${s.markup} handling fee.`); return; }
+      if(s.split.pbgPerEval > s.evalPrice || s.split.pbgPerPrep > s.prepPrice || s.split.pbgGemPct < 0 || s.split.pbgGemPct > 100){ toast("PBG's share can't be more than the add-on price."); return; }
+      s.version = SETTINGS_VERSION;
+      settings = s; settings.saved = true;
+      if(!LS.set("pbg.settings", settings)){ toast("Couldn't save on this device."); return; }
+      try{ await PBG.savePricing(pricingRules(settings), settings.graders); toast(PBG.mode === "live" ? "Saved. Prices updated for every iPad." : "Settings saved"); }
+      catch(x){ toast("Saved on this iPad, but the order system didn't accept the prices: " + x.message); }
+      syncAll();
+      staff("settings");
+    }
+    else if(b.id === "reset"){ if(await confirmBox("Restore default settings?", "Your prices, companies, terms and manager PIN go back to the defaults. Employees are kept.", "Restore")){ const emps = settings.employees || []; settings = { ...structuredClone(DEFAULTS), employees: emps, version: SETTINGS_VERSION }; LS.set("pbg.settings", { employees: emps, version: SETTINGS_VERSION }); staff("settings"); } }
+  };
+}
+
+/* ---------------- pricing from the order system ---------------- */
+const PRICE_KEYS = ["markup","evalPrice","prepPrice","gemTiers","magPrice","split","pricesChecked"];
+const pricingRules = s => Object.fromEntries(PRICE_KEYS.map(k => [k, s[k]]));
+async function loadPricing(){
+  try{
+    if(PBG.mode === "live" && !(await PBG.currentStaff())) return;
+    const p = await PBG.getPricing(); if(!p || !p.rules) return;
+    Object.assign(settings, p.rules); if(Array.isArray(p.graders) && p.graders.length) settings.graders = p.graders;
+    settings.pricingFrom = p.updated_at ? `${new Date(p.updated_at).toLocaleString()}${p.updated_by ? " by " + p.updated_by : ""}` : "";
+    LS.set("pbg.settings", { ...LS.get("pbg.settings", {}), ...pricingRules(settings), graders: settings.graders, version: SETTINGS_VERSION });
+  }catch(e){ /* offline: keep the last prices saved on this iPad */ }
+}
+
+/* ---------------- start ---------------- */
+step = "welcome";
+PBG.init().catch(e => toast(e.message)).then(loadPricing).finally(() => { render(); syncAll(); });
+if("serviceWorker" in navigator && location.protocol === "https:"){ navigator.serviceWorker.register("sw.js").catch(() => {}); }
+</script>
+</body>
+</html>

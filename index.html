@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PBG Cards & Collectibles HTX | Card shop in Spring, TX</title>
+<meta name="description" content="Sports cards, Pokémon TCG, graded slabs and sealed product in Spring, TX. We buy collections, submit cards for grading, and offer partner pricing on professional evaluations and grading prep through Restored Rarity TCG. Open daily 11 AM to 7 PM.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="assets/pbg-logo.png">
+<meta property="og:image" content="assets/pbg-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Store","name":"PBG Cards & Collectibles HTX","telephone":"+1-832-610-7081",
+ "address":{"@type":"PostalAddress","streetAddress":"25170 I-45 N, Unit 9","addressLocality":"Spring","addressRegion":"TX","postalCode":"77386","addressCountry":"US"},
+ "openingHours":"Mo-Su 11:00-19:00","sameAs":["https://www.instagram.com/pbgcardshophtx/"]}
+</script>
+<style>
+:root{
+  --black:#000;
+  --panel:#151515;
+  --panel-2:#1F1F1F;
+  --red:#E31B23;
+  --red-dark:#B3121A;
+  --flame:#FF8A1F;
+  --white:#FFFFFF;
+  --smoke:#B4B4B4;
+  --line:#2E2E2E;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--black);color:var(--white);font-family:Archivo,system-ui,sans-serif;font-size:18px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+img{max-width:100%;height:auto;display:block}
+:focus-visible{outline:3px solid var(--flame);outline-offset:3px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+h1,h2,h3{margin:0;line-height:1;font-style:italic;font-weight:900;font-variation-settings:"wdth" 112;letter-spacing:-.01em}
+h1{font-size:clamp(38px,5.4vw,68px)}
+h2{font-size:clamp(32px,4.4vw,54px)}
+h3{font-size:22px;font-weight:850}
+p{margin:0}
+.muted{color:var(--smoke)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 24px;font:inherit;font-size:16px;font-weight:850;font-style:italic;text-decoration:none;cursor:pointer;border:2px solid transparent;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+.btn-red{background:var(--red);color:var(--white)}
+.btn-red:hover{background:var(--red-dark)}
+.btn-white{background:var(--white);color:var(--black)}
+.btn-white:hover{background:#E6E6E6}
+
+/* header */
+.top{position:sticky;top:0;z-index:30;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:28px;height:72px}
+.top .logo img{height:58px;width:auto}
+.top nav{margin-left:auto;display:flex;gap:26px;font-size:16px;font-weight:600}
+.top nav a{text-decoration:none;color:var(--smoke)}
+.top nav a:hover{color:var(--white)}
+.top .btn{min-height:42px;font-size:15px;padding:0 18px}
+@media (max-width:860px){.top nav{display:none}.top .btn{margin-left:auto}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding:56px 0 72px;
+  background:radial-gradient(120% 80% at 80% 100%,rgba(227,27,35,.35),transparent 60%),radial-gradient(60% 50% at 10% 0%,rgba(255,138,31,.12),transparent 70%),#000}
+.hero .wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.hero .mark{width:min(520px,100%);margin:0 0 28px -8px}
+.hero h1{max-width:13em}
+.hero .lede{font-size:20px;color:var(--smoke);max-width:30em;margin-top:20px}
+.hero .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.status{display:inline-flex;align-items:center;gap:10px;margin-top:26px;font-size:16px;font-weight:600}
+.status i{width:10px;height:10px;border-radius:50%;background:#666}
+.status i.on{background:#2BD46A;box-shadow:0 0 0 4px rgba(43,212,106,.2)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}.hero{padding-top:32px}}
+
+/* fanned flyers: the one bold move */
+.fan{position:relative;height:560px}
+.fan a{position:absolute;top:50%;left:50%;width:min(300px,62%);aspect-ratio:590/731;border-radius:12px;overflow:hidden;
+  box-shadow:0 24px 50px -10px rgba(0,0,0,.8),0 0 0 2px rgba(255,255,255,.08);transition:transform .25s ease;animation:deal .8s cubic-bezier(.2,.8,.2,1) both}
+.fan img{width:100%;height:100%;object-fit:cover}
+.fan a:nth-child(1){transform:translate(-95%,-50%) rotate(-12deg);animation-delay:.05s;--t:translate(-95%,-50%) rotate(-12deg)}
+.fan a:nth-child(2){transform:translate(-5%,-52%) rotate(10deg);animation-delay:.15s;--t:translate(-5%,-52%) rotate(10deg)}
+.fan a:nth-child(3){transform:translate(-50%,-50%) rotate(-1deg);z-index:2;animation-delay:.25s;--t:translate(-50%,-50%) rotate(-1deg)}
+.fan a:hover,.fan a:focus-visible{z-index:3;transform:var(--t) translateY(-14px) scale(1.03)}
+@keyframes deal{from{opacity:0;transform:translate(-50%,10%) rotate(0)}to{opacity:1;transform:var(--t)}}
+.fan .tag{position:absolute;right:4%;top:4%;z-index:4;background:var(--red);color:#fff;font-weight:900;font-style:italic;font-size:15px;padding:8px 14px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+@media (max-width:900px){.fan{height:440px}.fan a{width:min(240px,48%)}}
+@media (max-width:520px){.fan{height:360px}.fan a{width:52%}}
+
+/* strip */
+.strip{background:var(--red);transform:skewY(-1.5deg);margin:-18px 0 0;position:relative;z-index:2}
+.strip .wrap{transform:skewY(1.5deg);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 28px;padding-top:16px;padding-bottom:16px;font-weight:800;font-style:italic;font-size:18px}
+.strip a{text-decoration:none}
+
+/* sections */
+section{padding:96px 0}
+.head{max-width:660px;margin-bottom:44px}
+.head p{margin-top:16px;font-size:19px;color:var(--smoke)}
+
+/* shop */
+.shop{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.shop figure{margin:0;border-radius:14px;overflow:hidden;position:relative;background:var(--panel)}
+.shop figure img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.shop figcaption{position:absolute;left:0;right:0;bottom:0;padding:40px 20px 16px;background:linear-gradient(transparent,rgba(0,0,0,.85));font-size:15px;color:#ddd}
+.shop .photos{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;min-height:420px}
+.cats{display:grid;gap:0;align-content:start}
+.cats div{padding:20px 0;border-bottom:1px solid var(--line)}
+.cats div:first-child{padding-top:0}
+.cats h3{display:flex;align-items:center;gap:12px}
+.cats h3::before{content:"";width:12px;height:12px;background:var(--red);transform:skewX(-15deg)}
+.cats p{color:var(--smoke);margin-top:6px;font-size:16.5px;padding-left:24px}
+@media (max-width:900px){.shop{grid-template-columns:1fr}.shop .photos{min-height:300px}}
+
+/* sell */
+.band{background:var(--panel);border-block:1px solid var(--line)}
+.sell .wrap{display:grid;grid-template-columns:.8fr 1fr;gap:56px;align-items:center}
+.sell img{border-radius:14px;box-shadow:0 20px 50px -20px rgba(227,27,35,.6)}
+.sell ul{list-style:none;padding:0;margin:28px 0 32px}
+.sell li{padding:14px 0;border-top:1px solid var(--line);font-size:18px}
+.sell li b{color:var(--white)}
+.sell li span{color:var(--smoke);display:block;font-size:16px}
+@media (max-width:900px){.sell .wrap{grid-template-columns:1fr}.sell img{max-width:420px}}
+
+/* promo */
+.promo .wrap{display:grid;grid-template-columns:1fr .9fr;gap:56px;align-items:center}
+.promo img{border-radius:14px}
+.promo .note{margin-top:18px;font-size:15px;color:var(--smoke)}
+@media (max-width:900px){.promo .wrap{grid-template-columns:1fr}.promo img{max-width:460px}}
+
+/* grading */
+.grading{background:var(--panel);border-block:1px solid var(--line)}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:56px}
+@media (max-width:900px){.gr{grid-template-columns:1fr;gap:44px}}
+.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:56px 1fr;gap:4px 16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.steps li:first-child{padding-top:0}
+.steps li::before{content:counter(s);grid-row:1/3;width:44px;height:44px;background:var(--red);display:grid;place-items:center;font-weight:900;font-style:italic;font-size:20px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.steps p{color:var(--smoke);font-size:16.5px}
+.graders{margin-top:24px;color:var(--smoke);font-size:16px}
+.prep{border:2px solid var(--red);border-radius:16px;padding:32px;background:#0B0B0B}
+.rr-logo{display:block;width:min(260px,70%);margin:0 auto 22px;border-radius:14px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.08),0 18px 40px -18px rgba(40,90,255,.55);transition:transform .2s ease}
+.rr-logo:hover{transform:translateY(-3px)}
+.rr-logo img{width:100%;height:auto;display:block}
+.prep .by{color:var(--smoke);margin-top:8px;font-size:16px}
+.prep ul{list-style:none;padding:0;margin:22px 0 0}
+.prep li{padding:16px 0;border-top:1px solid var(--line)}
+.prep li b{display:block;font-size:18px}
+.prep li span{color:var(--smoke);font-size:16px}
+.deal{display:inline-block;margin-left:8px;font-style:italic;font-size:13px;font-weight:850;background:var(--red);color:#fff;padding:3px 10px;vertical-align:2px;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.dropoff{margin-top:18px;padding:16px 18px;border-radius:12px;background:linear-gradient(135deg,rgba(40,90,255,.18),rgba(142,108,240,.14));border:1px solid rgba(120,140,255,.35)}
+.dropoff b{display:block;font-size:17px;font-style:italic}
+.dropoff span{display:block;color:var(--smoke);font-size:15px;margin-top:4px}
+.prep .note{margin-top:18px;font-size:15px;color:var(--smoke)}
+
+/* instagram */
+.ig-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.ig-grid a{aspect-ratio:1;overflow:hidden;border-radius:8px;background:var(--panel)}
+.ig-grid img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
+.ig-grid a:hover img{transform:scale(1.05)}
+@media (max-width:760px){.ig-grid{grid-template-columns:repeat(3,1fr)}}
+.ig-head{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+
+/* visit */
+.visit{display:grid;grid-template-columns:1fr 1.2fr;gap:48px;align-items:start}
+@media (max-width:900px){.visit{grid-template-columns:1fr}}
+.facts dt{font-size:15px;color:var(--smoke);margin-top:22px}
+.facts dd{margin:4px 0 0;font-size:21px;font-weight:700}
+.facts dd a{text-underline-offset:4px;text-decoration-thickness:1px}
+.facts .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.map{position:relative;border-radius:14px;overflow:hidden;min-height:400px;background:var(--panel);border:1px solid var(--line)}
+.map .fallback{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:6px;padding:24px}
+.map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.3) contrast(1.05)}
+
+footer{border-top:1px solid var(--line);padding:44px 0;font-size:15px;color:var(--smoke)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:24px 48px;align-items:center;justify-content:space-between}
+footer img{height:64px;width:auto}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#" aria-label="PBG Cards & Collectibles HTX home"><img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX" width="760" height="390"></a>
+    <nav aria-label="Main">
+      <a href="#grading">Grading</a>
+      <a href="#shop">In the shop</a>
+      <a href="#sell">Sell your cards</a>
+      <a href="#visit">Visit</a>
+    </nav>
+    <a class="btn btn-red" href="tel:+18326107081">Call 832-610-7081</a>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Sports cards and Pokémon, right off I-45 in Spring.</h1>
+      <p class="lede">Buy, sell and trade singles, graded slabs and sealed product. Drop off your cards for PSA, CGC, BGS or TAG grading at the counter, and we'll handle the rest. New boxes hit the shelves every week.</p>
+      <div class="actions">
+        <a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Get directions</a>
+        <a class="btn btn-white" href="#grading">Submit cards for grading</a>
+      </div>
+      <p class="status"><i id="dot"></i><span id="status">Open daily, 11 AM to 7 PM</span></p>
+    </div>
+    <div class="fan" aria-label="New arrivals at PBG">
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-heritage.jpg" alt="2026 Topps Heritage Football hobby boxes, in stock now" width="590" height="731"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-flagship.jpg" alt="Topps Flagship basketball hobby and jumbo boxes, now in stock" width="590" height="731"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/bowman-best.jpg" alt="2026 Bowman Best hobby boxes, now in stock" width="590" height="731"></a>
+      <span class="tag">Just in</span>
+    </div>
+  </div>
+</div>
+
+<div class="strip">
+  <div class="wrap">
+    <a href="#grading">Grading drop-off at the counter</a>
+    <span>Open every day, 11 AM to 7 PM</span>
+    <a href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">25170 I-45 N, Unit 9, Spring, TX</a>
+    <a href="tel:+18326107081">832-610-7081</a>
+  </div>
+</div>
+
+<section id="grading" class="grading">
+  <div class="wrap gr">
+    <div>
+      <div class="head">
+        <h2>Get your cards graded</h2>
+        <p>No account, no shipping, no forms to mail. Drop your cards off at PBG and we handle the paperwork, packing and shipping to the grader.</p>
+      </div>
+      <ol class="steps">
+        <li><h3>Drop off your cards</h3><p>We check each card in on our iPad, photograph it and give you a ticket number.</p></li>
+        <li><h3>Add a professional evaluation or prep</h3><p>We send cards to our partner, Restored Rarity TCG, where restoration professionals evaluate and prep them at PBG partner pricing.</p></li>
+        <li><h3>We submit to the grader</h3><p>Your cards go out with our next submission at the service level you picked.</p></li>
+        <li><h3>Track it, then pick up your slabs</h3><p>Follow every grading stage from the link on your receipt. Bring your ticket number and a photo ID to pick up. Storage is free for 30 days after we tell you your cards are ready; after that a $1 per card per day holding fee applies.</p></li>
+      </ol>
+      <p class="graders">We submit to PSA, CGC, Beckett (BGS) and TAG. Grading prices are the company's current fee plus a $20 PBG handling fee per card. Cards worth over $4,000 get our gem service, with a magnetic case to display the slab: $40 over $4,000, $60 over $6,000, $80 over $8,000 and $100 over $10,000. Want your slab ready to display? Add a matching magnetic slab case for $15 a card with any grading submission, and we'll hand it to you with your slab at pickup. Ask at the counter for service levels and turnaround.</p>
+      <p class="graders"><b style="color:#fff">Already dropped off?</b> Scan the QR code on your receipt to see which grading stage your cards are in.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px"><a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Bring your cards in</a><a class="btn btn-white" href="tel:+18326107081">Questions? Call us</a></div>
+    </div>
+    <aside class="prep" aria-labelledby="rr">
+      <a class="rr-logo" href="https://restoredraritytcg.com" aria-label="Restored Rarity TCG website"><img src="assets/restored-rarity-logo.jpg" alt="Restored Rarity TCG logo" width="640" height="614" loading="lazy"></a>
+      <h3 id="rr">Partner pricing with Restored Rarity TCG</h3>
+      <p class="by">Your cards are evaluated and prepped by professionals in the card restoration space who work to the requirements of PSA, CGC, Beckett and TAG. Drop your cards off at PBG and we send them over, so you pay the partner rate and never ship them yourself.</p>
+      <ul>
+        <li><b>Full evaluation with magnification <em class="deal">$17 per card</em></b><span>A professional pre-grader inspects centering, corners, edges and surface under magnification, then tells you what grade range to expect and whether the card is worth the grading fee.</span></li>
+        <li><b>Prep <em class="deal">$7 per card</em></b><span>Cleaning and grading prep by a restoration professional who knows what each grading company accepts, so your card goes in looking its best.</span></li>
+      </ul>
+      <div class="dropoff"><b>Authorized Restored Rarity drop-off</b><span>Need a card repaired or restored? PBG is an authorized drop-off location for Restored Rarity. Check it in at the counter and it goes straight to Restored Rarity, who send you their own quote and tracking link.</span></div>
+      <p class="note">PBG partner pricing. More about Restored Rarity at <a href="https://restoredraritytcg.com">restoredraritytcg.com</a>.</p>
+    </aside>
+  </div>
+</section>
+
+<section id="shop">
+  <div class="wrap">
+    <div class="head">
+      <h2>What's in the cases</h2>
+      <p>Come dig through the singles, crack a pack at the counter, or find the slab you've been chasing.</p>
+    </div>
+    <div class="shop">
+      <div class="photos">
+        <figure><img src="assets/pokemon-case.jpg" alt="Display case full of Charizard cards in toploaders with PBG price tags" loading="lazy"><figcaption>Charizards in the case, priced and ready.</figcaption></figure>
+        <figure><img src="assets/riftbound-shelf.jpg" alt="Riftbound League of Legends booster boxes stacked on a glass case" loading="lazy"><figcaption>Riftbound boxes on the counter.</figcaption></figure>
+      </div>
+      <div class="cats">
+        <div><h3>Sports cards</h3><p>Football, basketball, baseball and more. Hobby boxes, singles, rookies and autos.</p></div>
+        <div><h3>Pokémon TCG</h3><p>Vintage to modern singles, chase cards and the newest sets.</p></div>
+        <div><h3>Graded cards</h3><p>Slabs from PSA, CGC, Beckett, TAG and more.</p></div>
+        <div><h3>Sealed product</h3><p>Hobby and jumbo boxes, ETBs, packs and collections, including Riftbound.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="sell" class="sell band">
+  <div class="wrap">
+    <img src="assets/sell-pokemon.jpg" alt="Sell us your Pokémon cards. Free collection evaluations." loading="lazy" width="590" height="731">
+    <div>
+      <h2>Sell us your cards</h2>
+      <p class="muted" style="margin-top:16px;font-size:19px">Bring in a binder, a box or a whole closet. We'll look through it with you and make a fair offer on the spot.</p>
+      <ul>
+        <li><b>Free collection evaluations</b><span>No appointment, no charge to look.</span></li>
+        <li><b>Cash or store credit</b><span>Trade into new product or take the cash.</span></li>
+        <li><b>Pokémon and sports</b><span>Raw singles, graded slabs and sealed product.</span></li>
+      </ul>
+      <a class="btn btn-red" href="tel:+18326107081">Call before you come in</a>
+    </div>
+  </div>
+</section>
+
+<section class="promo">
+  <div class="wrap">
+    <div>
+      <h2>Game day at the shop</h2>
+      <p class="muted" style="margin-top:16px;font-size:19px">Show up in your team's gear, tell us your favorite player and walk out with a free pack of football cards. Buy any football cards in store and get another pack free.</p>
+      <p class="note">Promotions change often. Follow <a href="https://www.instagram.com/pbgcardshophtx/">@pbgcardshophtx</a> for this week's deals.</p>
+    </div>
+    <img src="assets/gameday.jpg" alt="Game Day Giveaway flyer: free pack of football cards for wearing team gear" loading="lazy" width="731" height="731">
+  </div>
+</section>
+
+
+<section>
+  <div class="wrap">
+    <div class="ig-head">
+      <h2>On the feed</h2>
+      <a class="btn btn-white" href="https://www.instagram.com/pbgcardshophtx/">Follow @pbgcardshophtx</a>
+    </div>
+    <div class="ig-grid">
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/gameday.jpg" alt="Game Day Giveaway" loading="lazy"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/bowman-best.jpg" alt="Bowman Best in stock" loading="lazy"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-flagship.jpg" alt="Topps Flagship in stock" loading="lazy"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/riftbound-shelf.jpg" alt="Riftbound boxes" loading="lazy"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/sell-pokemon.jpg" alt="Sell us your Pokémon cards" loading="lazy"></a>
+      <a href="https://www.instagram.com/pbgcardshophtx/"><img src="assets/topps-heritage.jpg" alt="Topps Heritage Football in stock" loading="lazy"></a>
+    </div>
+  </div>
+</section>
+
+<section id="visit" class="band">
+  <div class="wrap visit">
+    <div class="facts">
+      <h2>Come see us</h2>
+      <dl>
+        <dt>Address</dt><dd>25170 I-45 N, Unit 9<br>Spring, TX 77386</dd>
+        <dt>Hours</dt><dd>Monday to Sunday, 11 AM to 7 PM</dd>
+        <dt>Phone</dt><dd><a href="tel:+18326107081">832-610-7081</a></dd>
+        <dt>Instagram</dt><dd><a href="https://www.instagram.com/pbgcardshophtx/">@pbgcardshophtx</a></dd>
+      </dl>
+      <div class="actions">
+        <a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Get directions</a>
+        <a class="btn btn-white" href="tel:+18326107081">Call the shop</a>
+      </div>
+    </div>
+    <div class="map">
+      <div class="fallback"><b>25170 I-45 N, Unit 9</b><span class="muted">Near Rayford Road, Spring, TX</span></div>
+      <iframe title="Map to PBG Cards & Collectibles" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+        src="https://maps.google.com/maps?q=25170%20I-45%20N%20Unit%209%2C%20Spring%2C%20TX%2077386&z=15&output=embed"></iframe>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX" loading="lazy">
+    <p>25170 I-45 N, Unit 9, Spring, TX 77386<br>Open daily 11 AM to 7 PM. 832-610-7081</p>
+    <a href="https://restoredraritytcg.com" style="display:flex;align-items:center;gap:12px;text-decoration:none"><img src="assets/restored-rarity-logo.jpg" alt="" style="height:56px;width:auto;border-radius:8px" loading="lazy"><span>Authorized drop-off for<br><u>Restored Rarity TCG</u></span></a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  try{
+    const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date());
+    const h = +parts.find(p=>p.type==='hour').value % 24, m = +parts.find(p=>p.type==='minute').value, t = h*60+m;
+    const s = document.getElementById('status'), d = document.getElementById('dot');
+    if(t >= 660 && t < 1140){ s.textContent = 'Open now until 7 PM'; d.classList.add('on'); }
+    else s.textContent = t < 660 ? 'Opens today at 11 AM' : 'Opens tomorrow at 11 AM';
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<title>PBG Staff Portal</title>
+<link rel="icon" href="../assets/pbg-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<script src="../pbg-config.js"></script>
+<script src="../pbg-api.js"></script>
+<style>
+:root{--ink:#141414;--red:#E31B23;--paper:#F4F4F2;--white:#fff;--steel:#666D7A;--line:#DADDE2;--green:#1C7C47;--amber:#9A5B00;--violet:#5B3FA8}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:Archivo,system-ui,sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
+h1,h2,h3{margin:0;line-height:1.1;font-style:italic;font-weight:900;font-variation-settings:"wdth" 112}
+h1{font-size:30px}h2{font-size:24px}h3{font-size:18px}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+[hidden]{display:none!important}
+a{color:inherit}
+
+.bar{background:#000;color:#fff;display:flex;align-items:center;gap:16px;padding:0 20px;height:64px;position:sticky;top:0;z-index:20}
+.bar img{height:44px;width:auto}
+.bar .t{font-size:15px;opacity:.75}
+.bar .r{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:14px}
+.bar .who{opacity:.85}
+.demo{background:#FCEFD6;color:#5A3A00;font-size:14px;padding:8px 20px;text-align:center}
+
+.wrap{max-width:1280px;margin:0 auto;padding:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;border:2px solid transparent;font-weight:750;font-size:15px;cursor:pointer;text-decoration:none;background:none;white-space:nowrap}
+.btn-red{background:var(--red);color:#fff}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-line{border-color:var(--ink);background:#fff}
+.btn-ghost{color:var(--ink)}
+.btn-sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn-lg{min-height:54px;font-size:17px;padding:0 24px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.bar .btn-line{background:transparent;border-color:rgba(255,255,255,.5);color:#fff}
+
+input.t,select.t,textarea.t{width:100%;min-height:44px;padding:9px 12px;border:2px solid var(--line);border-radius:10px;background:#fff;font-size:16px}
+textarea.t{min-height:80px;resize:vertical}
+input.t:focus,select.t:focus,textarea.t:focus{border-color:var(--ink);outline:none}
+label.f{display:block;font-size:13px;font-weight:650;color:var(--steel)}
+label.f .t{margin-top:4px}
+.err{color:var(--red);font-size:14px;margin-top:8px}
+
+/* sign in */
+.signin{max-width:420px;margin:8vh auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:32px}
+.signin img{width:220px;margin:0 auto 18px;display:block;background:#000;border-radius:12px;padding:10px}
+.signin .grid{display:grid;gap:14px;margin-top:20px}
+
+/* list */
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.top h1{margin-right:auto}
+.search{flex:1 1 280px;max-width:420px}
+.groups{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{min-height:38px;padding:0 14px;border-radius:999px;border:2px solid var(--line);background:#fff;cursor:pointer;font-weight:650;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.chip b{font-size:12px;background:var(--paper);border-radius:999px;padding:2px 8px}
+.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip[aria-pressed=true] b{background:rgba(255,255,255,.18)}
+.graders{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.graders .chip{min-height:32px;font-size:13px}
+
+.table{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:36px 1.1fr 1.3fr .7fr 1.8fr .6fr;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.row:first-child{border-top:0}
+.row:hover{background:#FAFAF8}
+.row.h{cursor:default;background:#FAFAF8;font-size:12px;font-weight:700;color:var(--steel)}
+.row .tk{font-weight:800}
+.row small{display:block;color:var(--steel);font-size:13px}
+.row input[type=checkbox]{width:20px;height:20px;accent-color:var(--ink)}
+@media (max-width:900px){.row{grid-template-columns:30px 1fr 1fr}.row .hide-sm{display:none}}
+.stage{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px;background:#EDEDED}
+.stage.shop{background:#E7F0FF;color:#1D3F8A}
+.stage.partner{background:#EFE9FB;color:var(--violet)}
+.stage.ship,.stage.grader{background:#FFF1DB;color:var(--amber)}
+.stage.ready{background:#DDF3E6;color:var(--green)}
+.stage.done{background:#EDEDED;color:#555}
+.prog{height:5px;border-radius:5px;background:#EEE;margin-top:6px;overflow:hidden;max-width:220px}
+.prog i{display:block;height:100%;background:var(--red)}
+.tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;background:#EFE9FB;color:var(--violet)}
+.empty{padding:48px 20px;text-align:center;color:var(--steel)}
+
+.bulk{position:sticky;bottom:0;background:var(--ink);color:#fff;border-radius:14px;padding:12px 16px;margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bulk select{max-width:320px;color:var(--ink)}
+
+/* detail */
+.back{margin-bottom:12px}
+.dgrid{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+@media (max-width:1000px){.dgrid{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+.panel+.panel{margin-top:16px}
+.dhead{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.dhead .meta{color:var(--steel);font-size:14px;margin-top:6px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:16px}
+.kv div span{display:block;font-size:12px;color:var(--steel);font-weight:650}
+.kv div b{font-size:15px}
+.next{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+
+.track{list-style:none;margin:14px 0 0;padding:0}
+.track li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;padding:7px 0;align-items:start;font-size:14px;color:var(--steel)}
+.track li i{width:14px;height:14px;border-radius:50%;border:2px solid #C8CCD3;margin-top:3px;background:#fff}
+.track li.done{color:var(--ink)}
+.track li.done i{background:var(--ink);border-color:var(--ink)}
+.track li.cur{color:var(--ink);font-weight:800}
+.track li.cur i{background:var(--red);border-color:var(--red);box-shadow:0 0 0 4px rgba(227,27,35,.18)}
+.track li small{font-size:12px;color:var(--steel);font-weight:500}
+.track .grp{font-size:11px;font-weight:800;color:var(--steel);padding-top:10px;display:block}
+
+.cards .c{display:grid;grid-template-columns:72px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.cards .c:first-child{border-top:0;padding-top:4px}
+.cards img,.cards .noimg{width:72px;height:100px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:#EEE;display:grid;place-items:center;font-size:11px;color:var(--steel)}
+.cards .cf{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.cards .wide{grid-column:1/-1}
+.cards .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.hist li:first-child{border-top:0}
+.hist small{color:var(--steel)}
+.hist .hidden-note{font-size:12px;color:var(--amber);font-weight:700}
+
+.linkbox{display:flex;gap:8px;align-items:center;margin-top:10px}
+.linkbox input{font-size:13px}
+.toggle{display:flex;gap:10px;align-items:center;font-size:14px;margin-top:8px}
+.toggle input{width:20px;height:20px;accent-color:var(--ink)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;z-index:60;font-size:15px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:50;padding:20px}
+.modal{background:#fff;border-radius:16px;width:min(520px,100%);padding:24px}
+.modal .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+</style>
+</head>
+<body>
+<header class="bar">
+  <img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX">
+  <span class="t">Staff portal</span>
+  <div class="r" id="barRight"></div>
+</header>
+<div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Sign in with any email; use an email containing "restored" to see the Restored Rarity partner view.</div>
+<div id="app"></div>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "$" + (+n || 0).toFixed(2);
+const fmtDate = (d, time) => d ? new Date(d).toLocaleString([], time ? { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" } : { month:"short", day:"numeric", year:"numeric" }) : "";
+const ago = d => { const s = (Date.now() - new Date(d)) / 1000; if(s < 3600) return Math.max(1, Math.round(s/60)) + " min ago"; if(s < 86400) return Math.round(s/3600) + " hr ago"; return Math.round(s/86400) + " days ago"; };
+function toast(m){ const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+function confirmBox(title, body, yes="Confirm"){
+  return new Promise(res => { const s = document.createElement("div"); s.className = "scrim";
+    s.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h2>${esc(title)}</h2><p style="margin-top:8px;color:var(--steel)">${esc(body)}</p><div class="acts"><button class="btn btn-line" data-n>Cancel</button><button class="btn btn-red" data-y>${esc(yes)}</button></div></div>`;
+    document.body.appendChild(s); $("[data-n]", s).onclick = () => { s.remove(); res(false); }; $("[data-y]", s).onclick = () => { s.remove(); res(true); }; });
+}
+
+let me = null, stages = [], orders = [], view = { group: "open", grader: "all", q: "" }, selected = new Set();
+
+/* stage helpers */
+function info(o){
+  const list = PBG.stageList(o, stages), idx = Math.max(0, list.findIndex(s => s.code === o.current_stage)), cur = list[idx] || { label: o.current_stage, phase: "shop" };
+  const cls = o.current_stage === "picked_up" ? "done" : o.current_stage === "ready" ? "ready" : cur.phase;
+  return { list, idx, cur, cls, pct: Math.round(idx / Math.max(1, list.length - 1) * 100), next: list[idx+1] || null };
+}
+/* pickup / unclaimed-card clock (terms section 10) */
+const PICKUP = Object.assign({ freeDays: 30, feePerCardPerDay: 1, finalNoticeDay: 60, noticePeriodDays: 30 }, (window.PBG_CONFIG || {}).pickup || {});
+const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000);
+const isoDay = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`; };
+function pickup(o){
+  if(o.current_stage !== "ready") return null;
+  const readyAt = o.ready_at || ((o.stage_events || []).find(e => e.stage === "ready") || {}).created_at;
+  if(!readyAt) return null;
+  const days = Math.floor((Date.now() - new Date(readyAt)) / 86400000), cards = o.card_count ?? (o.cards || []).length;
+  const feeDays = Math.max(0, days - PICKUP.freeDays);
+  const deadlinePassed = !!o.pickup_deadline && new Date(o.pickup_deadline + "T23:59:59") < new Date();
+  return { readyAt, days, cards, feeDays, fee: feeDays * cards * PICKUP.feePerCardPerDay,
+    freeUntil: addDays(readyAt, PICKUP.freeDays), noticeDue: addDays(readyAt, PICKUP.finalNoticeDay),
+    overdue: days > PICKUP.freeDays, noticeNeeded: days >= PICKUP.finalNoticeDay && !o.final_notice_at, deadlinePassed };
+}
+const GROUPS = [
+  ["open", "All open", o => o.current_stage !== "picked_up"],
+  ["shop", "At PBG", o => ["checked_in","prep_done"].includes(o.current_stage)],
+  ["partner", "At Restored Rarity", o => o.current_stage === "at_partner"],
+  ["grader", "At grader", o => { const p = info(o).cur.phase; return p === "ship" || p === "grader"; }],
+  ["ready", "Ready for pickup", o => o.current_stage === "ready"],
+  ["overdue", "Pickup overdue", o => { const p = pickup(o); return !!p && p.overdue; }],
+  ["done", "Picked up", o => o.current_stage === "picked_up"],
+  ["all", "Everything", () => true]
+];
+
+/* ---------- shell ---------- */
+async function boot(){
+  $("#demoBar").hidden = PBG.mode !== "demo";
+  try{ await PBG.init(); me = await PBG.currentStaff(); }catch(e){ $("#app").innerHTML = `<div class="wrap"><div class="panel"><h2>Can't reach the order system</h2><p style="margin-top:8px">${esc(e.message)}</p></div></div>`; return; }
+  if(!me) return signInView();
+  stages = await PBG.stages();
+  bar(); route();
+}
+function bar(){
+  $("#barRight").innerHTML = me ? `${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a><a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  const o = $("#out"); if(o) o.onclick = async () => { await PBG.signOut(); me = null; selected.clear(); view = { group: "open", grader: "all", q: "" }; bar(); location.hash = ""; signInView(); };
+}
+window.addEventListener("hashchange", () => me && route());
+function route(){
+  if(location.hash === "#payouts" && ["owner","partner"].includes(me.role)) return payouts();
+  const id = location.hash.replace(/^#order-/, ""); if(location.hash.startsWith("#order-") && id) detail(id); else list();
+}
+
+function signInView(){
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Staff sign in</h2>
+    <p style="color:var(--steel);margin-top:6px;font-size:15px">Track grading orders and update their stages.</p>
+    <form class="grid" id="f"><label class="f">Email<input class="t" id="em" type="email" autocomplete="username" required></label>
+    <label class="f">Password<input class="t" id="pw" type="password" autocomplete="current-password" required></label>
+    <button class="btn btn-red btn-lg" id="go">Sign in</button><p class="err" id="er" hidden></p></form></div>`;
+  $("#f").onsubmit = async e => { e.preventDefault(); const b = $("#go"), er = $("#er"); b.disabled = true; b.textContent = "Signing in…"; er.hidden = true;
+    try{ me = await PBG.signIn($("#em").value.trim(), $("#pw").value); stages = await PBG.stages(); bar(); route(); }
+    catch(x){ er.hidden = false; er.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; } };
+}
+
+/* ---------- order list ---------- */
+async function list(){
+  $("#app").innerHTML = `<div class="wrap"><div class="empty">Loading orders…</div></div>`;
+  try{ orders = await PBG.listOrders(); }catch(e){ $("#app").innerHTML = `<div class="wrap"><div class="panel">Couldn't load orders: ${esc(e.message)}</div></div>`; return; }
+  if(me.role === "partner" && view.group === "open") view.group = "partner";
+  drawList();
+}
+function drawList(){
+  const q = view.q.toLowerCase(), g = GROUPS.find(x => x[0] === view.group);
+  const graders = [...new Set(orders.map(o => o.grader))].sort();
+  const base = orders.filter(o => view.grader === "all" || o.grader === view.grader)
+    .filter(o => !q || [o.ticket, o.customer_first + " " + o.customer_last, o.phone, o.email, o.grader_order_no].join(" ").toLowerCase().includes(q));
+  const rows = base.filter(g[2]);
+  const visibleGroups = me.role === "partner" ? GROUPS.filter(x => ["partner","shop","all"].includes(x[0])) : GROUPS;
+  $("#app").innerHTML = `<div class="wrap">
+    <div class="top"><h1>${me.role === "partner" ? "Prep orders" : "Grading orders"}</h1>
+      <input class="t search" id="q" placeholder="Search ticket, name, phone or grader order #" value="${esc(view.q)}"></div>
+    <div class="groups">${visibleGroups.map(([k, l, f]) => `<button class="chip" data-g="${k}" aria-pressed="${view.group===k}">${l}<b>${base.filter(f).length}</b></button>`).join("")}</div>
+    <div class="graders"><button class="chip" data-gr="all" aria-pressed="${view.grader==="all"}">All companies</button>${graders.map(x => `<button class="chip" data-gr="${esc(x)}" aria-pressed="${view.grader===x}">${x === "None" ? "Prep only" : esc(PBG.graderName(x))}</button>`).join("")}</div>
+    <div class="table">
+      <div class="row h"><span></span><span>Ticket</span><span>Customer</span><span class="hide-sm">Company</span><span>Stage</span><span class="hide-sm">Updated</span></div>
+      ${rows.length ? rows.map(o => { const s = info(o); return `<div class="row" data-id="${o.id}">
+        <span><input type="checkbox" data-sel="${o.id}" aria-label="Select ${esc(o.ticket)}" ${selected.has(o.id) ? "checked" : ""}></span>
+        <span><span class="tk">${esc(o.ticket)}</span><small>${o.card_count} card${o.card_count===1?"":"s"}${o.has_prep ? ' &nbsp;<span class="tag">Prep</span>' : ""}</small></span>
+        <span>${esc(o.customer_first)} ${esc(o.customer_last)}<small>${me.role === "partner" ? "" : esc(o.phone)}</small></span>
+        <span class="hide-sm">${o.grader === "None" ? "Prep only" : esc(PBG.graderName(o.grader))}<small>${esc(o.tier || "")}</small></span>
+        <span><span class="stage ${s.cls}">${esc(s.cur.label)}</span><div class="prog"><i style="width:${s.pct}%"></i></div></span>
+        <span class="hide-sm"><small>${ago(o.updated_at || o.created_at)}</small></span></div>`; }).join("")
+      : `<div class="empty">${orders.length ? "No orders match these filters." : "No orders yet. Submissions from the shop iPad show up here."}</div>`}
+    </div>
+    <div id="bulk"></div></div>`;
+  $("#q").oninput = e => { view.q = e.target.value; const pos = e.target.selectionStart; drawList(); const n = $("#q"); n.focus(); n.setSelectionRange(pos, pos); };
+  document.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { view.group = b.dataset.g; drawList(); });
+  document.querySelectorAll("[data-gr]").forEach(b => b.onclick = () => { view.grader = b.dataset.gr; drawList(); });
+  document.querySelectorAll(".row[data-id]").forEach(r => r.onclick = e => { if(e.target.closest("input")) return; location.hash = "order-" + r.dataset.id; });
+  document.querySelectorAll("[data-sel]").forEach(c => c.onchange = () => { c.checked ? selected.add(c.dataset.sel) : selected.delete(c.dataset.sel); drawBulk(); });
+  drawBulk();
+}
+function drawBulk(){
+  const el = $("#bulk"); if(!el) return;
+  const sel = orders.filter(o => selected.has(o.id));
+  if(!sel.length){ el.innerHTML = ""; return; }
+  const sameGrader = sel.every(o => o.grader === sel[0].grader && o.has_prep === sel[0].has_prep);
+  const opts = sameGrader ? PBG.stageList(sel[0], stages).filter(s => me.role !== "partner" || s.phase === "partner") : [];
+  el.innerHTML = `<div class="bulk"><b>${sel.length} selected</b>
+    ${sameGrader ? `<select class="t" id="bStage">${opts.map(s => `<option value="${s.code}">${esc(s.label)}</option>`).join("")}</select>
+      <button class="btn btn-red btn-sm" id="bGo">Move all to this stage</button>` : `<span style="opacity:.8;font-size:14px">To move orders together, select orders for the same grading company.</span>`}
+    <button class="btn btn-sm" style="color:#fff;margin-left:auto" id="bClr">Clear</button></div>`;
+  $("#bClr").onclick = () => { selected.clear(); drawList(); };
+  const go = $("#bGo"); if(go) go.onclick = async () => {
+    const code = $("#bStage").value, label = $("#bStage").selectedOptions[0].textContent;
+    if(!await confirmBox(`Move ${sel.length} orders?`, `All selected orders will move to "${label}" and customers will see the update.`, "Move orders")) return;
+    go.disabled = true;
+    try{ for(const o of sel) await PBG.setStage(o.id, code, null, true); toast(`${sel.length} orders moved to ${label}`); selected.clear(); list(); }
+    catch(e){ toast(e.message); go.disabled = false; }
+  };
+}
+
+/* ---------- order detail ---------- */
+async function detail(id){
+  $("#app").innerHTML = `<div class="wrap"><div class="empty">Loading order…</div></div>`;
+  let o; try{ o = await PBG.getOrder(id); }catch(e){ $("#app").innerHTML = `<div class="wrap"><a class="btn btn-ghost back" href="#">Back to orders</a><div class="panel">Couldn't open this order: ${esc(e.message)}</div></div>`; return; }
+  const s = info(o), partner = me.role === "partner";
+  const reached = {}; o.stage_events.forEach(e => { if(!reached[e.stage]) reached[e.stage] = e.created_at; });
+  const canSet = st => !partner || st.phase === "partner";
+  const link = PBG.statusUrl(o.public_token);
+  const smsBody = `Hi ${o.customer_first}, it's PBG Cards & Collectibles. Your ticket ${o.ticket} is now at: ${s.cur.label}. Track it here: ${link}`;
+  const lastPhase = l => ({ shop: "PBG", partner: "Restored Rarity", ship: "Shipping", grader: PBG.graderName(o.grader) }[l]);
+  let prevPhase = null;
+
+  $("#app").innerHTML = `<div class="wrap">
+    <a class="btn btn-ghost back" href="#">Back to orders</a>
+    <div class="dgrid"><div>
+      <div class="panel">
+        <div class="dhead"><div style="margin-right:auto"><h1>${esc(o.ticket)}</h1>
+          <p class="meta">Checked in ${fmtDate(o.created_at, true)}. Cards accepted by ${esc(o.received_by || "staff")}</p></div>
+          <span class="stage ${s.cls}" style="font-size:15px">${esc(s.cur.label)}</span></div>
+        <div class="kv">
+          <div><span>Customer</span><b>${esc(o.customer_first)} ${esc(o.customer_last)}</b></div>
+          ${partner ? "" : `<div><span>Phone</span><b><a href="tel:${esc(o.phone.replace(/\D/g,""))}">${esc(o.phone)}</a></b></div>
+          <div><span>Email</span><b>${o.email ? `<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>` : "None"}</b></div>
+          <div><span>Reach by</span><b>${esc(o.contact_pref || "Text")}</b></div>
+          <div><span>Mailing address</span><b>${esc(o.mailing_address || "None")}</b></div>`}
+          <div><span>Grading</span><b>${o.grader === "None" ? "None, prep only" : esc(PBG.graderName(o.grader) + " " + (o.tier || ""))}</b></div>
+          ${o.if_low_grade ? `<div><span>If evaluation is low</span><b>${esc({call:"Call customer first",submit:"Submit anyway",return:"Return ungraded"}[o.if_low_grade] || o.if_low_grade)}</b></div>` : ""}
+          ${partner ? "" : `<div><span>Total</span><b>${money(o.total)} ${o.payment_when === "pickup" ? "due at pickup" : "paid"}</b></div>`}
+          ${me.role === "owner" ? `<div><span>Owed to ${o.grader === "None" ? "grader" : esc(PBG.graderName(o.grader))}</span><b>${money(o.grader_fees)}</b></div><div><span>PBG share</span><b>${money(o.pbg_share)}</b></div>` : ""}
+          ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity share</span><b>${money(o.rr_share)}</b></div>` : ""}
+        </div>
+        ${o.customer_notes ? `<p style="margin-top:14px;font-size:14px"><b>Customer note:</b> ${esc(o.customer_notes)}</p>` : ""}
+        ${o.cards.some(c => c.repair) ? `<p class="notice" style="margin-top:14px;font-size:14px;background:#EFE9FB;color:#3B2A78;border-radius:10px;padding:10px 14px">${o.rr_code ? `Repair cards were sent to Restored Rarity as <b>${esc(o.rr_code)}</b>. Restored Rarity quotes and bills them directly.` : "Repair cards are waiting to be sent to Restored Rarity from the shop iPad."}</p>` : ""}
+      </div>
+
+      <div class="panel">
+        <h2>Update stage</h2>
+        ${s.next && canSet(s.next) ? `<div class="next"><button class="btn btn-red btn-lg" id="advance">Move to: ${esc(s.next.label)}</button></div>` : ""}
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px;align-items:end">
+          <label class="f">Or set a specific stage<select class="t" id="pick">${s.list.filter(canSet).map(st => `<option value="${st.code}" ${st.code===o.current_stage?"selected":""}>${esc(st.label)}</option>`).join("")}</select></label>
+          <button class="btn btn-line" id="setPick">Set stage</button>
+        </div>
+        <label class="f" style="margin-top:12px">Note with this update (optional)<textarea class="t" id="note" placeholder="e.g. Grades are in. Come by any day 11 to 7."></textarea></label>
+        <label class="toggle"><input type="checkbox" id="vis" checked> Show this update and note on the customer's status page</label>
+        ${partner ? "" : `<label class="toggle"><input type="checkbox" id="mail" ${o.email ? "" : "disabled"}> ${o.email ? `Email the customer about this update (${esc(o.email)})` : "Email the customer (no email on file)"}</label>`}
+      </div>
+
+      <div class="panel cards"><h2 style="margin-bottom:12px">Cards (${o.cards.length})</h2>
+        ${o.cards.map(c => { const img = PBG.photoUrl(c.front_path); return `<div class="c" data-card="${c.id}">
+          ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="${esc(c.name)} front"></a>` : `<div class="noimg">No photo</div>`}
+          <div><h3>${c.position}. ${esc(c.name)}</h3>
+            <small style="color:var(--steel)">${esc([c.category, c.year, c.set_name, c.card_number && "#" + c.card_number, c.variant].filter(Boolean).join(", "))}. Declared ${money(c.declared_value)}</small>
+            <div class="tags">${c.gem ? `<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service ${c.gem_fee ? money(c.gem_fee) : ""} + mag case</span>` : ""}${c.mag_case ? '<span class="tag" style="background:#E6EEF8;color:#1F3B63">Mag slab case: hand over at pickup</span>' : ""}${c.eval ? '<span class="tag">Full evaluation</span>' : ""}${c.clean ? '<span class="tag">Prep</span>' : ""}${c.repair ? `<span class="tag">Restored Rarity repair${c.repair_note ? ": " + esc(c.repair_note) : ""}</span>` : ""}</div>
+            <div class="cf">
+              ${c.eval || partner ? `<label class="f wide">Full evaluation result<input class="t" data-f="eval_result" value="${esc(c.eval_result)}" placeholder="e.g. Strong 9, light edge wear"></label>` : ""}
+              ${c.repair ? `<label class="f">Repair quote $<input class="t" data-f="repair_quote" type="number" inputmode="decimal" value="${esc(c.repair_quote)}"></label>` : ""}
+              ${partner ? "" : `<label class="f">Grade<input class="t" data-f="grade" value="${esc(c.grade)}" placeholder="${esc(o.grader === "None" ? "" : "e.g. " + PBG.graderName(o.grader) + " 10")}"></label>
+              <label class="f">Cert number<input class="t" data-f="cert_number" value="${esc(c.cert_number)}"></label>
+              <label class="f">Card status<input class="t" data-f="card_status" value="${esc(c.card_status)}" placeholder="e.g. Pulled, returned ungraded"></label>`}
+              <div style="align-self:end"><button class="btn btn-ink btn-sm" data-save="${c.id}">Save card</button></div>
+            </div></div></div>`; }).join("")}
+      </div>
+    </div>
+
+    <div>
+      <div class="panel"><h2>Stages for ${o.grader === "None" ? "prep only" : esc(PBG.graderName(o.grader))}</h2>
+        <ul class="track">${s.list.map((st, i) => { const grp = st.phase !== prevPhase ? `<span class="grp">${lastPhase(st.phase)}</span>` : ""; prevPhase = st.phase;
+          return `${grp ? `<li style="display:block;padding:0">${grp}</li>` : ""}<li class="${i < s.idx ? "done" : i === s.idx ? "cur" : ""}"><i></i><span>${esc(st.label)}</span><small>${reached[st.code] ? fmtDate(reached[st.code]) : ""}</small></li>`; }).join("")}</ul>
+      </div>
+
+      ${(() => { const p = partner ? null : pickup(o); if(!p) return "";
+        const tone = p.deadlinePassed || p.noticeNeeded ? "#FDE7E7" : p.overdue ? "#FFF4CC" : "#DDF3E6";
+        return `<div class="panel" style="background:${tone}"><h2>Pickup clock</h2>
+        <div class="kv" style="margin-top:10px">
+          <div><span>Ready notice</span><b>${fmtDate(p.readyAt)}</b></div>
+          <div><span>Days waiting</span><b>${p.days}</b></div>
+          <div><span>Free storage until</span><b>${fmtDate(p.freeUntil)}</b></div>
+          <div><span>Holding fee so far</span><b>${money(p.fee)}</b><small style="display:block;color:var(--steel)">${p.feeDays} day${p.feeDays===1?"":"s"} × ${p.cards} card${p.cards===1?"":"s"} × ${money(PICKUP.feePerCardPerDay)}</small></div>
+          <div><span>Final notice due</span><b>${o.final_notice_at ? "Sent " + fmtDate(o.final_notice_at) : fmtDate(p.noticeDue)}</b></div>
+          ${o.pickup_deadline ? `<div><span>Pickup deadline</span><b>${fmtDate(o.pickup_deadline + "T12:00:00")}</b></div>` : ""}
+        </div>
+        ${!o.mailing_address ? `<p style="margin-top:10px;font-size:14px"><b>No mailing address on file.</b> Get one from the customer before the final notice is due.</p>` : ""}
+        ${p.noticeNeeded ? `<p style="margin-top:10px;font-size:14px"><b>Final notice is due.</b> Print the letter, send it by USPS certified mail (keep the receipt), text/email the same notice, then record it below.</p>` : ""}
+        <div class="next" style="flex-wrap:wrap"><button class="btn btn-ink btn-sm" id="letter">Print final notice letter</button></div>
+        ${o.final_notice_at ? "" : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+          <label class="f">Date mailed<input class="t" type="date" id="fnDate" value="${isoDay(new Date())}"></label>
+          <label class="f">Certified mail number<input class="t" id="fnTrack" placeholder="9407 ..."></label>
+          <div style="grid-column:1/-1"><button class="btn btn-line btn-sm" id="fnSave">Record final notice sent</button></div></div>`}
+        ${p.deadlinePassed && !o.abandoned_at ? `<div class="next"><button class="btn btn-red btn-sm" id="abandon">Record cards as abandoned</button></div>` : ""}
+        ${o.abandoned_at ? `<p style="margin-top:10px;font-size:14px"><b>Recorded as abandoned ${fmtDate(o.abandoned_at)}.</b> Cards may be sold from the day after the deadline. PBG keeps the sale price; if the customer asks later, refund only the grading fees they paid at drop-off.</p>` : ""}
+      </div>`; })()}
+
+      ${partner ? "" : `<div class="panel"><h2>Customer link</h2>
+        <p style="font-size:14px;color:var(--steel);margin-top:6px">The customer's private status page. It's also on their receipt as a QR code.</p>
+        <div class="linkbox"><input class="t" readonly value="${esc(link)}" id="lnk"><button class="btn btn-line btn-sm" id="copy">Copy</button></div>
+        <div class="next"><a class="btn btn-ink btn-sm" href="sms:${esc(o.phone.replace(/\D/g,""))}?&body=${encodeURIComponent(smsBody)}">Text customer</a>
+          ${o.email ? `<a class="btn btn-line btn-sm" href="mailto:${esc(o.email)}?subject=${encodeURIComponent("Your PBG ticket " + o.ticket)}&body=${encodeURIComponent(smsBody)}">Email customer</a>` : ""}
+          <a class="btn btn-ghost btn-sm" href="${esc(link)}" target="_blank" rel="noopener">Open status page</a></div>
+      </div>
+
+      <div class="panel"><h2>Shipping and notes</h2>
+        <div style="display:grid;gap:10px;margin-top:12px">
+          <label class="f">${o.grader === "None" ? "Reference number" : esc(PBG.graderName(o.grader)) + " submission number"}<input class="t" id="gno" value="${esc(o.grader_order_no)}"></label>
+          <label class="f">Tracking to grader<input class="t" id="otr" value="${esc(o.outbound_tracking)}"></label>
+          <label class="f">Return tracking (customer can see this)<input class="t" id="rtr" value="${esc(o.return_tracking)}"></label>
+          <label class="f">Internal notes (staff only)<textarea class="t" id="inote">${esc(o.internal_notes)}</textarea></label>
+          <div><button class="btn btn-ink btn-sm" id="saveO">Save</button></div>
+        </div></div>`}
+
+      <div class="panel"><h2>History</h2>
+        <ul class="hist" style="margin-top:8px">${o.stage_events.slice().reverse().map(e => { const st = s.list.find(x => x.code === e.stage);
+          return `<li><b>${esc(st ? st.label : e.stage)}</b> <small>${fmtDate(e.created_at, true)}${e.created_by_name ? " by " + esc(e.created_by_name) : ""}</small>
+          ${e.note ? `<p style="margin-top:4px">${esc(e.note)}</p>` : ""}${e.visible_to_customer ? "" : '<div class="hidden-note">Hidden from customer</div>'}${e.email_customer && o.email ? '<div class="hidden-note" style="color:var(--green)">Customer emailed</div>' : ""}</li>`; }).join("")}</ul>
+        ${o.signature_url ? `<p style="margin-top:12px;font-size:13px;color:var(--steel)">Signed by ${esc(o.signed_name)}</p><img src="${esc(o.signature_url)}" alt="Customer signature" style="max-width:100%;border:1px solid var(--line);border-radius:8px">` : ""}
+      </div>
+    </div></div></div>`;
+
+  const setStage = async (code, btn) => {
+    const st = s.list.find(x => x.code === code);
+    btn.disabled = true;
+    const mail = $("#mail"), email = mail && !mail.disabled ? mail.checked && $("#vis").checked : false;
+    try{ await PBG.setStage(o.id, code, $("#note").value.trim(), $("#vis").checked, email); toast("Moved to " + st.label + (email ? ". Customer will be emailed." : "")); detail(o.id); }
+    catch(e){ toast(e.message); btn.disabled = false; }
+  };
+  // default the email box to the stage's own setting (quiet in-between stages start unchecked)
+  const mailDefault = code => { const m = $("#mail"), st = s.list.find(x => x.code === code); if(m && !m.disabled) m.checked = !!st && st.notify_customer !== false; };
+  mailDefault(s.next ? s.next.code : o.current_stage);
+  $("#pick").onchange = e => mailDefault(e.target.value);
+  const adv = $("#advance"); if(adv) adv.onclick = () => setStage(s.next.code, adv);
+  $("#setPick").onclick = async () => {
+    const code = $("#pick").value; if(code === o.current_stage){ toast("The order is already at that stage."); return; }
+    const target = s.list.findIndex(x => x.code === code);
+    if(target < s.idx && !await confirmBox("Move this order back?", `It will go back to "${s.list[target].label}". The customer will see the change.`, "Move back")) return;
+    setStage(code, $("#setPick"));
+  };
+  document.querySelectorAll("[data-save]").forEach(b => b.onclick = async () => {
+    const box = b.closest("[data-card]"), patch = {};
+    box.querySelectorAll("[data-f]").forEach(i => patch[i.dataset.f] = i.type === "number" ? (i.value === "" ? null : +i.value) : (i.value.trim() || null));
+    b.disabled = true; try{ await PBG.updateCard(box.dataset.card, patch); toast("Card saved"); }catch(e){ toast(e.message); } b.disabled = false;
+  });
+  const cp = $("#copy"); if(cp) cp.onclick = async () => { try{ await navigator.clipboard.writeText(link); toast("Link copied"); }catch(e){ $("#lnk").select(); toast("Select the link and copy it"); } };
+  const lt = $("#letter"); if(lt) lt.onclick = () => finalNoticeLetter(o);
+  const fs = $("#fnSave"); if(fs) fs.onclick = async () => {
+    const sent = $("#fnDate").value; if(!sent){ toast("Enter the date it was mailed."); return; }
+    const deadline = isoDay(addDays(sent + "T12:00:00", PICKUP.noticePeriodDays));
+    if(!await confirmBox("Record the final notice?", `Pickup deadline will be ${fmtDate(deadline + "T12:00:00")} (${PICKUP.noticePeriodDays} days after mailing). Make sure the letter you mailed shows this same date.`, "Record")) return;
+    fs.disabled = true;
+    try{ await PBG.updateOrder(o.id, { final_notice_at: new Date(sent + "T12:00:00").toISOString(), final_notice_tracking: $("#fnTrack").value.trim() || null, pickup_deadline: deadline });
+      await PBG.setStage(o.id, "ready", `Final notice sent ${fmtDate(sent + "T12:00:00")} by certified mail. Pickup deadline ${fmtDate(deadline + "T12:00:00")}.`, false, false);
+      toast("Final notice recorded"); detail(o.id); }
+    catch(e){ toast(e.message); fs.disabled = false; }
+  };
+  const ab = $("#abandon"); if(ab) ab.onclick = async () => {
+    if(!await confirmBox("Record these cards as abandoned?", "Only do this after the pickup deadline in the final notice has passed with no pickup or payment. Keep the certified mail receipt with the ticket.", "Record abandoned")) return;
+    try{ await PBG.updateOrder(o.id, { abandoned_at: new Date().toISOString() }); toast("Recorded"); detail(o.id); }catch(e){ toast(e.message); }
+  };
+  const so = $("#saveO"); if(so) so.onclick = async () => {
+    so.disabled = true;
+    try{ await PBG.updateOrder(o.id, { grader_order_no: $("#gno").value.trim() || null, outbound_tracking: $("#otr").value.trim() || null, return_tracking: $("#rtr").value.trim() || null, internal_notes: $("#inote").value.trim() || null }); toast("Saved"); }
+    catch(e){ toast(e.message); } so.disabled = false;
+  };
+}
+
+/* ---------- final notice letter (print, then mail certified) ---------- */
+function finalNoticeLetter(o){
+  const p = pickup(o) || { readyAt: o.ready_at, cards: o.cards.length, fee: 0 };
+  const sent = new Date(), deadline = o.pickup_deadline ? new Date(o.pickup_deadline + "T12:00:00") : addDays(sent, PICKUP.noticePeriodDays);
+  const unpaid = o.payment_when === "pickup" ? +o.total || 0 : 0;
+  const dropoffPaid = o.payment_when === "pickup" ? 0 : (+o.grade_each || 0) * (+o.graded_count || 0);
+  const longDate = d => new Date(d).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+  const w = window.open("", "_blank"); if(!w){ toast("Allow pop-ups to print the letter."); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Final notice ${esc(o.ticket)}</title>
+  <style>body{font:15px/1.55 Georgia,serif;max-width:680px;margin:40px auto;color:#111}h1{font:700 20px Arial,sans-serif;margin:24px 0 8px}table{border-collapse:collapse;width:100%;margin:10px 0}td,th{border:1px solid #bbb;padding:6px 8px;text-align:left;font-size:14px}.hd{font:13px Arial,sans-serif}.box{border:2px solid #111;padding:12px 14px;margin:16px 0}@media print{button{display:none}}</style></head><body>
+  <button onclick="print()">Print</button>
+  <div class="hd"><b>PBG Cards &amp; Collectibles HTX</b><br>25170 I-45 N, Unit 9, Spring, TX 77386<br>832-610-7081</div>
+  <p style="margin-top:28px">${longDate(sent)}</p>
+  <p><b>Sent by USPS Certified Mail</b>${o.final_notice_tracking ? " No. " + esc(o.final_notice_tracking) : ""}, and by text/email</p>
+  <p>${esc(o.customer_first)} ${esc(o.customer_last)}<br>${esc(o.mailing_address || "[MAILING ADDRESS]").replace(/,\s*/, "<br>")}</p>
+  <h1>FINAL NOTICE: Unclaimed cards, ticket ${esc(o.ticket)}</h1>
+  <p>Dear ${esc(o.customer_first)},</p>
+  <p>Your cards on ticket ${esc(o.ticket)} have been ready for pickup at PBG since ${longDate(p.readyAt)}. We let you know they were ready on that date. Under section 10 of the submission terms you signed on ${longDate(o.created_at)}, storage was free for ${PICKUP.freeDays} days and a holding fee of ${money(PICKUP.feePerCardPerDay)} per card per day has applied since then.</p>
+  <table><tr><th>Card</th><th>Grade</th></tr>${o.cards.map(c => `<tr><td>${esc([c.year, c.set_name, c.name, c.card_number && "#" + c.card_number].filter(Boolean).join(" "))}</td><td>${esc(c.grade || "")}</td></tr>`).join("")}</table>
+  <table><tr><td>Unpaid service charges</td><td>${money(unpaid)}</td></tr><tr><td>Holding fee as of today (${p.cards} card${p.cards===1?"":"s"})</td><td>${money(p.fee)}</td></tr><tr><th>Amount owed as of today</th><th>${money(unpaid + p.fee)}</th></tr></table>
+  <p>The holding fee continues at ${money(p.cards * PICKUP.feePerCardPerDay)} per day until pickup.</p>
+  <div class="box"><b>Please pick up your cards and pay the amount owed by ${longDate(deadline)}.</b> We are open every day, 11 AM to 7 PM. Bring your ticket number and a photo ID, or send someone with your written authorization, your ticket number and their photo ID.<br><br>
+  If the cards are not picked up and paid for by that date, they will be considered abandoned and ownership passes to PBG, as you agreed in section 10 of the submission terms you signed. <b>PBG may sell them on or after ${longDate(addDays(deadline, 1))}.</b><br><br>
+  If the cards are sold, <b>PBG will keep the entire sale price, including any amount above what you owe.</b> You will not receive any of the sale proceeds. The only refund available is the grading fees you paid to PBG at drop-off${dropoffPaid ? ` (${money(dropoffPaid)} on this ticket)` : " (none were paid on this ticket)"}, which PBG will refund if you ask for them after the sale.<br><br>
+  When you signed the terms, you agreed that this notice process is reasonable and that you have no reasonable cause to object to a sale on or after that date once this notice has been sent.</div>
+  <p>If you believe this notice is in error or need to make other arrangements, call us at 832-610-7081 before the date above.</p>
+  <p>Sincerely,<br><br>PBG Cards &amp; Collectibles HTX</p></body></html>`);
+  w.document.close();
+}
+
+/* ---------- payouts ---------- */
+async function payouts(){
+  const now = new Date(), pad = n => String(n).padStart(2, "0");
+  const first = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`, today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const from = payouts.from || first, to = payouts.to || today, partner = me.role === "partner";
+  $("#app").innerHTML = `<div class="wrap"><div class="top"><h1>Payouts</h1>
+    <label class="f">From<input class="t" type="date" id="pf" value="${from}"></label><label class="f">To<input class="t" type="date" id="pt" value="${to}"></label>
+    <button class="btn btn-ink" id="pgo" style="align-self:end">Show</button></div><div id="pbody"><div class="empty">Loading…</div></div></div>`;
+  $("#pgo").onclick = () => { payouts.from = $("#pf").value; payouts.to = $("#pt").value; payouts(); };
+  let rows; try{ rows = await PBG.payouts(from, to); }catch(e){ $("#pbody").innerHTML = `<div class="panel">${esc(e.message)}</div>`; return; }
+  const sum = k => rows.reduce((a, r) => a + (+r[k] || 0), 0);
+  const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share"), g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
+  const byGrader = {}; rows.forEach(r => { if(r.grader === "None") return; byGrader[r.grader] = (byGrader[r.grader] || 0) + (+r.grader_fees || 0); });
+  $("#pbody").innerHTML = `
+    <div class="kv" style="margin:0 0 16px">
+      ${partner ? "" : `<div class="panel"><span>Customer sales</span><b style="font-size:24px">${money(tot.total)}</b><small style="display:block;color:var(--steel)">incl. ${money(tot.tax)} tax</small></div>
+      <div class="panel"><span>Owed to grading companies</span><b style="font-size:24px">${money(tot.fees)}</b><small style="display:block;color:var(--steel)">${Object.entries(byGrader).map(([g, v]) => esc(PBG.graderName(g)) + " " + money(v)).join(", ") || "None"}</small></div>
+      <div class="panel"><span>PBG share</span><b style="font-size:24px">${money(tot.pbg)}</b><small style="display:block;color:var(--steel)">incl. ${tot.mg} mag slab case${tot.mg===1?"":"s"} (${money(tot.mgf)})</small></div>`}
+      <div class="panel" style="border-color:#8E6CF0"><span>Restored Rarity share</span><b style="font-size:24px">${money(tot.rr)}</b><small style="display:block;color:var(--steel)">${tot.g} graded cards, ${tot.e} full evaluations, ${tot.p} preps, ${tot.gm} gem services</small></div>
+    </div>
+    <div class="table">
+      <div class="row h" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default"><span>Ticket</span><span>Date</span><span>Company</span><span>Graded</span><span>Evals / preps / gems</span><span>Mags</span><span>${partner ? "" : "Grader fees"}</span><span>${partner ? "" : "PBG"}</span><span>Restored Rarity</span></div>
+      ${rows.length ? rows.map(r => `<div class="row" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default">
+        <span class="tk">${esc(r.ticket)}</span><span>${fmtDate(r.created_at)}</span><span>${r.grader === "None" ? "Prep only" : esc(PBG.graderName(r.grader) + " " + (r.tier || ""))}</span>
+        <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money(r.rr_share)}</b></span></div>`).join("")
+        : `<div class="empty">No orders in these dates.</div>`}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-line btn-sm" id="pcsv">Copy as CSV</button></div>
+    <p style="color:var(--steel);font-size:14px;margin-top:12px" id="splitNote"></p>`;
+  PBG.getPricing().then(p => { const r = p && p.rules; if(!r) return; const sp = r.split, m = n => "$" + (+n).toFixed(0);
+    $("#splitNote").textContent = `Current split: ${m(sp.pbgPerGrade)} PBG and ${m(sp.rrPerGrade)} Restored Rarity per graded card (${m(r.markup)} handling); full evaluation ${m(r.evalPrice)} (PBG ${m(sp.pbgPerEval)}, Restored Rarity ${m(r.evalPrice - sp.pbgPerEval)}); prep ${m(r.prepPrice)} (PBG ${m(sp.pbgPerPrep)}, Restored Rarity ${m(r.prepPrice - sp.pbgPerPrep)}); gem service ${r.gemTiers.map(t => m(t.fee) + " over " + m(t.over)).join(", ")} (PBG ${sp.pbgGemPct}%, Restored Rarity ${100 - sp.pbgGemPct}%); magnetic slab case ${m(r.magPrice ?? 15)} (PBG ${sp.pbgMagPct ?? 100}%${(sp.pbgMagPct ?? 100) < 100 ? ", Restored Rarity " + (100 - sp.pbgMagPct) + "%" : ""}). The order system calculates the shares when each order comes in, and past orders keep theirs. Sales tax isn't part of the split.`; }).catch(() => {});
+  $("#pcsv").onclick = async () => {
+    const head = ["Ticket","Date","Company","Level","Graded","Full evals","Preps","Gem services","Mag cases"].concat(partner ? ["Restored Rarity"] : ["Total","Tax","Grader fees","PBG","Restored Rarity"]);
+    const lines = [head].concat(rows.map(r => [r.ticket, r.created_at.slice(0,10), r.grader, r.tier || "", r.graded_count, r.eval_count, r.prep_count, r.gem_count || 0, r.mag_count || 0]
+      .concat(partner ? [r.rr_share] : [r.total, r.tax, r.grader_fees, r.pbg_share, r.rr_share])));
+    const csv = lines.map(l => l.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
+    try{ await navigator.clipboard.writeText(csv); toast("CSV copied"); }catch(e){ toast("Couldn't copy here"); }
+  };
+}
+
+boot();
+</script>
+</body>
+</html>
