@@ -476,10 +476,20 @@ function welcome(){
       <div><b>Full evaluation</b><span>${money(settings.evalPrice)} per card, with magnification</span></div>
       <div><b>Prep</b><span>${money(settings.prepPrice)} per card, cleaning and grading prep</span></div>
     </div>
-    <button class="btn btn-red" id="start">Start a submission</button>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-red" id="start">Start a submission</button>
+      <a class="btn btn-line" id="rrSubmit" href="${esc(rrSubmitUrl())}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px"><img src="restored-rarity-logo.jpg" alt="" style="height:30px;width:auto;border-radius:6px">Restored Rarity submission</a>
+    </div>
     <div class="partner" style="display:flex;align-items:center;gap:16px;text-align:left;max-width:560px;margin:44px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px"><img src="restored-rarity-logo.jpg" alt="Restored Rarity TCG logo" style="width:84px;height:auto;border-radius:10px;flex:none"><p style="margin:0;font-size:16px;max-width:none">Full evaluations and prep are done by restoration professionals at our partner, Restored Rarity TCG, who know what each grading company looks for.<br>Checking in through PBG gets you a reduced rate.</p></div>
   </div></div>`;
   $("#start").onclick = () => { sub = blankSub(); go("customer"); };
+}
+
+function rrSubmitUrl(){
+  const rr = (window.PBG_CONFIG && PBG_CONFIG.restoredRarity) || {};
+  let u = rr.submitUrl || "https://restoredraritytcg.com/#submit";
+  if(rr.referralCode){ const [base, hash] = u.split("#"); u = base + (base.includes("?") ? "&" : "?") + "ref=" + encodeURIComponent(rr.referralCode) + (hash ? "#" + hash : ""); }
+  return u;
 }
 
 function customer(){

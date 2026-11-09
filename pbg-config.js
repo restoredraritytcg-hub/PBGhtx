@@ -24,6 +24,7 @@ window.PBG_CONFIG = {
     bucket: "portal",
     appsScriptUrl: "https://script.google.com/macros/s/AKfycbyB3lWxsrKg0hfSh4YvHG319jyenpPE1uljsiW1AcrQ328kDO6npH9mncOkellCYJVM/exec",
     portalUrl: "https://restoredraritytcg.com/portal/view.html",
+    submitUrl: "https://restoredraritytcg.com/#submit",   // home-screen button on the iPad: Restored Rarity's own submission form
     referralCode: ""          // optional: a Restored Rarity referral code to tag PBG drop-offs
   }
 };
