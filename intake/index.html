@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261109c"></script>
-<script src="../pbg-api.js?v=20261109c"></script>
-<script src="cardsearch.js?v=20261109c"></script>
-<script src="rr-push.js?v=20261109c"></script>
+<script src="../pbg-config.js?v=20261109d"></script>
+<script src="../pbg-api.js?v=20261109d"></script>
+<script src="cardsearch.js?v=20261109d"></script>
+<script src="rr-push.js?v=20261109d"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -231,7 +231,7 @@ const DEFAULTS = {
   // Profit split, saved on every order. Restored Rarity gets the rest of each add-on price.
   split: { pbgPerGrade: 12, rrPerGrade: 8, pbgPerEval: 2, pbgPerPrep: 2, pbgGemPct: 70, pbgMagPct: 100 },
   pricesChecked: "Nov 9, 2026",
-  // fee = what the grading company charges per card. active:false = paused by the company (shown greyed out).
+  // fee = what the grading company charges per card. active:false = paused by the company (hidden from customers).
   graders: [
     { name: "PSA", tiers: [
       { name: "Value Bulk",    fee: 24.99, max: 500,   eta: "Collectors Club, 20-card minimum", active: false },
@@ -240,9 +240,9 @@ const DEFAULTS = {
       { name: "Standard",      fee: 59.99, max: 1000,  eta: "About 70 to 80 business days",     active: true },
       { name: "Value Max",     fee: 64.99, max: 1000,  eta: "",                                 active: false },
       { name: "Priority",      fee: 79.99, max: 1500,  eta: "About 50 to 60 business days",     active: true },
-      { name: "Express",       fee: 199,   max: 2500,  eta: "About 20 to 30 business days",     active: true },
-      { name: "Super Express", fee: 349,   max: 5000,  eta: "About 10 to 15 business days",     active: true },
-      { name: "Premier",       fee: 599,   max: 10000, eta: "Fastest PSA service",              active: true } ] },
+      { name: "Express",       fee: 204.99, max: 2500,  eta: "About 20 to 30 business days",     active: true },
+      { name: "Super Express", fee: 359.99, max: 5000,  eta: "About 10 to 15 business days",     active: true },
+      { name: "Premier",       fee: 619.99, max: 10000, eta: "Fastest PSA service",              active: true } ] },
     { name: "CGC", tiers: [
       { name: "Bulk",        fee: 17,  max: 500,    eta: "About 150 working days. Ships in PBG's 25-card batch", active: true },
       { name: "Economy",     fee: 20,  max: 1000,   eta: "About 90 working days",  active: true },
@@ -324,10 +324,10 @@ const LS = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 };
-const SETTINGS_VERSION = 14;   // bump when DEFAULTS prices/companies change shape
+const SETTINGS_VERSION = 15;   // bump when DEFAULTS prices/companies change shape
 let settings = (() => {
   const saved = LS.get("pbg.settings", {}) || {};
-  if(saved.version !== SETTINGS_VERSION){   // older saved prices: keep employees, PIN and terms only
+  if(saved.version !== SETTINGS_VERSION){   // older saved prices: keep employees and PIN only
     const keep = {}; ["employees","pin"].forEach(k => { if(saved[k] !== undefined) keep[k] = saved[k]; });
     return Object.assign(structuredClone(DEFAULTS), keep, { version: SETTINGS_VERSION });
   }
@@ -557,9 +557,7 @@ function grading(){
     <div id="tierWrap" ${g && !standalone ? "" : "hidden"} style="margin-top:32px">
       <h3>Service level</h3>
       <p style="color:var(--steel);margin:6px 0 14px;font-size:16px">Pick the level that covers your highest declared value.</p>
-      <div class="choices" id="tiers">${g ? g.tiers.map(t => t.active === false
-        ? `<button class="choice paused" disabled aria-disabled="true"><b>${esc(t.name)}</b><span>Paused by ${esc(PBG.graderName(g.name))}. Not taking new cards right now.</span><div class="price">${money(tierPrice(t))}</div></button>`
-        : `<button class="choice" aria-pressed="${sub.tier===t.name}" data-t="${esc(t.name)}">
+      <div class="choices" id="tiers">${g ? g.tiers.filter(t => t.active !== false).map(t => `<button class="choice" aria-pressed="${sub.tier===t.name}" data-t="${esc(t.name)}">
         <b>${esc(t.name)}</b><span>${t.max ? "Declared value up to " + money(t.max).replace(".00","") : "No value limit"}${t.eta ? "<br>" + esc(t.eta) : ""}</span>
         <div class="price">${money(tierPrice(t))} <small style="font-size:14px;color:var(--steel);font-weight:600">per card</small></div></button>`).join("") : ""}</div>
       <p style="color:var(--steel);font-size:14px;margin-top:12px">Prices include the grading company's fee and PBG's $${(+settings.markup).toFixed(0)} handling. Grading companies set their own fees and may add upcharges.</p>
@@ -1099,7 +1097,7 @@ function staffSettings(){
       </div>
       <div class="panel" style="margin-top:16px">
         <h3>Grading companies and service levels</h3>
-        <p style="color:var(--steel);font-size:15px;margin-top:4px">Enter each company's own fee; the customer price (shown in bold) adds PBG's handling. Untick <b>Open</b> when a company pauses a level and it shows greyed out on the iPad. Fees last checked ${esc(s.pricesChecked || "")}.${s.pricingFrom ? ` Prices last saved to the order system ${esc(s.pricingFrom)}.` : ""} Saving here updates every iPad. Grading companies change prices and pauses often, so check monthly.</p>
+        <p style="color:var(--steel);font-size:15px;margin-top:4px">Enter each company's own fee; the customer price (shown in bold) adds PBG's handling. Untick <b>Open</b> when a company pauses a level and customers won't see it. Fees last checked ${esc(s.pricesChecked || "")}.${s.pricingFrom ? ` Prices last saved to the order system ${esc(s.pricingFrom)}.` : ""} Saving here updates every iPad. Grading companies change prices and pauses often, so check monthly.</p>
         ${s.graders.map((g, gi) => `<div class="grader-block">
           <div style="display:flex;gap:10px;align-items:end"><label class="f" style="flex:1">Company<input class="t" data-gname="${gi}" value="${esc(g.name)}"></label>
             <button class="btn btn-line btn-sm" data-addt="${gi}">Add level</button><button class="btn btn-ghost btn-sm" data-rmg="${gi}">Remove company</button></div>
