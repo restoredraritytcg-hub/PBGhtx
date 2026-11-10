@@ -60,6 +60,7 @@ The anon key is meant to be public. The security rules in `schema.sql` decide wh
 - **Domain DNS** (at the registrar for pbgcardshtx.com): four `A` records for `@` pointing to 185.199.108.153, 185.199.109.153, 185.199.110.153 and 185.199.111.153, and a `CNAME` for `www` pointing to `restoredraritytcg-hub.github.io`. Then in Settings > Pages confirm the custom domain shows `pbgcardshtx.com` and tick "Enforce HTTPS" once the certificate is ready.
 - **iPad**: open `/intake/` in Safari, Share > Add to Home Screen. It must be served over https to install and work offline.
 - When you change app files later, bump `VERSION` at the top of `intake/sw.js` so the iPad picks up the update.
+- When you change `pbg-config.js`, `pbg-api.js`, `site-content.js` or the other app scripts, also change the `?v=` number on their `<script>` tags (in `index.html`, `status.html`, `staff/index.html`, `intake/index.html`) so browsers load the new copy right away instead of a cached one.
 
 ## 4. Turn on email (Resend + Supabase Edge Function)
 
