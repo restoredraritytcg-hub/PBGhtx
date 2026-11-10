@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261109f"></script>
-<script src="../pbg-api.js?v=20261109f"></script>
-<script src="cardsearch.js?v=20261109f"></script>
-<script src="rr-push.js?v=20261109f"></script>
+<script src="../pbg-config.js?v=20261110a"></script>
+<script src="../pbg-api.js?v=20261110a"></script>
+<script src="cardsearch.js?v=20261110a"></script>
+<script src="rr-push.js?v=20261110a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -309,7 +309,9 @@ const DEFAULTS = {
 
 const PICKUP = (window.PBG_CONFIG && window.PBG_CONFIG.pickup) || { freeDays: 30, feePerCardPerDay: 1, finalNoticeDay: 60, noticePeriodDays: 30 };
 const AUCTION_HOUSES = ((window.PBG_CONFIG && window.PBG_CONFIG.auctionHouses) || ["Alt", "Fanatics Collect", "Goldin"]);
-const PAYOUTS = ["Zelle", "Check", "Store credit", "Cash at the shop"];
+const PAYOUTS = ["Wire transfer", "PayPal"];
+// Wire: only the account holder's name is taken at the counter. Bank details are collected securely when the card sells, never stored on the iPad.
+const payoutLabel = k => k === "PayPal" ? "PayPal email" : "Name on the bank account";
 const houseName = h => h === "Best fit" ? "the best-fit auction house" : h;
 const CATEGORIES = ["Pokémon", "Sports", "Other TCG"];
 const REPAIR_TYPES = { base: "Base repair", major: "Major repair", unsure: "Not sure, needs a look" };
@@ -589,12 +591,12 @@ function grading(){
       <p style="color:var(--steel);font-size:14px;margin-top:12px">Each auction house decides which cards and grading companies it accepts. We'll tell you if a card needs a different house.</p>
     </div></main>`;
   $("#graders").onclick = e => { const b = e.target.closest("[data-g]"); if(!b) return; const v = b.dataset.g;
-    if(v === "Auction"){ sub.grader = "None"; sub.tier = null; sub.auction = { mode: "standalone", house: A ? A.house : null, payout: A ? A.payout : "Zelle", payoutDetails: A ? A.payoutDetails : "" }; sub.cards.forEach(c => { c.clean = c.eval = c.repair = c.mag = false; }); }
+    if(v === "Auction"){ sub.grader = "None"; sub.tier = null; sub.auction = { mode: "standalone", house: A ? A.house : null, payout: A ? A.payout : "Wire transfer", payoutDetails: A ? A.payoutDetails : "" }; sub.cards.forEach(c => { c.clean = c.eval = c.repair = c.mag = false; }); }
     else { if(sub.grader !== v || standalone){ sub.grader = v; sub.tier = null; } if(v === "None" || standalone) sub.auction = null; if(standalone) sub.payment = { when: "dropoff", method: "Card" }; }
     render(); };
   const tiers = $("#tiers"); if(tiers) tiers.onclick = e => { const b = e.target.closest("[data-t]"); if(!b || b.disabled) return; sub.tier = b.dataset.t; sub.tierNote = null; render(); };
   const after = $("#after"); if(after) after.onclick = e => { const b = e.target.closest("[data-k]"); if(!b) return;
-    sub.auction = b.dataset.k === "auction" ? (sub.auction || { mode: "after_grading", house: null, payout: "Zelle", payoutDetails: "" }) : null;
+    sub.auction = b.dataset.k === "auction" ? (sub.auction || { mode: "after_grading", house: null, payout: "Wire transfer", payoutDetails: "" }) : null;
     if(sub.auction) sub.auction.mode = "after_grading"; render(); };
   const houses = $("#houses"); if(houses) houses.onclick = e => { const b = e.target.closest("[data-h]"); if(!b) return; sub.auction.house = b.dataset.h; render(); };
   const ready = (standalone || sub.grader === "None" || (sub.grader && sub.tier)) && (!sub.auction || sub.auction.house);
@@ -775,7 +777,10 @@ function review(){
       <div class="grid g2" style="margin-top:12px">
         <div><span class="f" style="font-size:15px;color:var(--steel);font-weight:600">How should we pay you?</span>
           <div class="seg" id="payout">${PAYOUTS.map(k => `<button type="button" data-k="${k}" aria-pressed="${A.payout===k}">${k}</button>`).join("")}</div></div>
-        <label class="f" id="pdWrap" ${A.payout === "Zelle" || A.payout === "Check" ? "" : "hidden"}>${A.payout === "Check" ? "Name the check is made out to" : "Zelle phone or email"}<input class="t" id="payoutDetails" value="${esc(A.payoutDetails || "")}"></label>
+        <label class="f" id="pdWrap">${payoutLabel(A.payout)}<input class="t" id="payoutDetails" value="${esc(A.payoutDetails || "")}"></label>
+      </div>
+      <p id="pdNote" style="color:var(--steel);font-size:14px;margin-top:8px" ${A.payout === "Wire transfer" ? "" : "hidden"}>When your cards sell, we'll contact you for your bank details and confirm them by phone before sending. We'll never ask for them by email or text.</p>
+      <div>
       </div></div>` : ""}
 
     <div class="panel" style="margin-top:16px" ${standalone ? "hidden" : ""}>
@@ -804,7 +809,7 @@ function review(){
 
   const seg = (id, set) => { const el = $("#"+id); if(!el) return; el.onclick = e => { const b = e.target.closest("button"); if(!b) return; set(b.dataset.k); [...el.children].forEach(x => x.setAttribute("aria-pressed", x===b)); }; };
   seg("iflow", k => sub.ifLowGrade = k); seg("payWhen", k => sub.payment.when = k); seg("payHow", k => sub.payment.method = k);
-  seg("payout", k => { A.payout = k; const w = $("#pdWrap"); w.hidden = !(k === "Zelle" || k === "Check"); w.firstChild.textContent = k === "Check" ? "Name the check is made out to" : "Zelle phone or email"; });
+  seg("payout", k => { A.payout = k; $("#pdWrap").firstChild.textContent = payoutLabel(k); const n = $("#pdNote"); if(n) n.hidden = k !== "Wire transfer"; });
   if(standalone){ sub.payment = { when: "dropoff", method: "None due" }; }
   const pad = sigPad($("#sig")); $("#clearSig").onclick = () => pad.clear();
 
@@ -817,7 +822,8 @@ function review(){
     if(A){ A.payoutDetails = ($("#payoutDetails") || {}).value ? $("#payoutDetails").value.trim() : ""; }
     const errs = [];
     if(auBox && !sub.agreedAuction) errs.push("agree to the auction terms");
-    if(A && (A.payout === "Zelle" || A.payout === "Check") && !A.payoutDetails) errs.push(A.payout === "Zelle" ? "enter your Zelle phone or email" : "enter the name for the check");
+    if(A && !A.payoutDetails) errs.push(A.payout === "PayPal" ? "enter your PayPal email" : "enter the name on your bank account");
+    if(A && A.payout === "PayPal" && A.payoutDetails && !/^\S+@\S+\.\S+$/.test(A.payoutDetails)) errs.push("enter a valid PayPal email");
     if(!sub.agreed) errs.push("check the box to agree to the terms");
     if(!sub.agreedPickup) errs.push("check the box for the pickup policy");
     if(rrBox && !sub.agreedRR) errs.push("agree to Restored Rarity's terms for your repair cards");
@@ -916,7 +922,7 @@ function done(){
     <div class="num">${esc(sub.ticket)}</div>
     <p>${t.count} card${t.count===1?"":"s"} ${sub.auction && sub.auction.mode === "standalone" ? `checked in for auction at ${esc(houseName(sub.auction.house))}` : sub.grader==="None" ? (sub.cards.every(x => x.repair && !x.clean && !x.eval) ? "checked in for a Restored Rarity repair" : "checked in for prep") : `for ${esc(sub.grader)} ${esc(sub.tier)}`}.${t.total > 0 ? ` Total ${money(t.total)}${sub.payment.when==="pickup" ? ", due at pickup" : ", paid"}.` : " Nothing is due at PBG."}</p>
     ${c.email ? `<p style="margin-top:6px">A copy of this receipt, with a link to your customer portal, is on its way to <b>${esc(c.email)}</b>.</p>` : ""}
-    <p style="margin-top:6px">${sub.auction ? `Your cards go to ${esc(houseName(sub.auction.house))}${sub.auction.mode === "after_grading" ? " after grading" : ""}. You get 100% of the hammer price, paid by ${esc(sub.auction.payout === "Zelle" ? "Zelle" : sub.auction.payout.toLowerCase())} once the auction house pays us.` : `We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.`}</p>
+    <p style="margin-top:6px">${sub.auction ? `Your cards go to ${esc(houseName(sub.auction.house))}${sub.auction.mode === "after_grading" ? " after grading" : ""}. You get 100% of the hammer price, paid by ${esc(sub.auction.payout === "PayPal" ? "PayPal" : "wire transfer")} once the auction house pays us.` : `We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.`}</p>
     ${sub.cards.some(x => x.repair) ? `<p class="notice" style="margin-top:16px;text-align:left">Your repair request is going to Restored Rarity. You'll get a confirmation from them with your own Restored Rarity link, and they'll quote the repair before doing any work.</p>` : ""}
     <div class="qr"><div class="code" id="qr"></div><p><b>Track your order</b><br>Scan this code to see your cards move through each grading stage. The link is printed on your receipt too.</p></div>
     <div id="syncBadge"></div>

@@ -159,7 +159,7 @@ When "Pokémon" is picked on a card, typing a name or number (like "charizard 4/
 
 ## 11. Auction consignment (Alt, Fanatics Collect, Goldin)
 
-Customers can send cards to auction two ways from the iPad: **Send straight to auction** after picking a grading level, or **Auction only** for slabs they already own. They pick Alt, Fanatics Collect, Goldin or "PBG picks", and how they want to be paid (Zelle, check, store credit, cash). They get 100% of the hammer price; the auction house's buyer's premium is paid by the buyer, and any seller bonus the house pays goes to PBG (terms section 11).
+Customers can send cards to auction two ways from the iPad: **Send straight to auction** after picking a grading level, or **Auction only** for slabs they already own. They pick Alt, Fanatics Collect, Goldin or "PBG picks", and how they want to be paid (wire transfer or PayPal; for a wire only the account holder's name is taken at the counter, and bank details are collected and confirmed by phone when the card sells, never stored in the system). They get 100% of the hammer price; the auction house's buyer's premium is paid by the buyer, and any seller bonus the house pays goes to PBG (terms section 11).
 
 Auction tickets end with their own stages instead of "Ready for pickup": Sent to the house, Received, Auction live, Sold, Paid out. The staff portal's **Auctions** page (owner and staff) tracks every consignment: filters by status, house and type, totals owed to customers, a **Mark paid out** button and a CSV export. Enter each card's hammer price (and lot link) on the order when the auction closes. The auction houses offered are listed in `pbg-config.js` (`auctionHouses`).
 

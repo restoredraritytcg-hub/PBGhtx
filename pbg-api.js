@@ -282,12 +282,12 @@
          { category: "Sports", name: "C.J. Stroud", year: "2023", set_name: "Donruss Optic", card_number: "203", variant: "Rated Rookie", declared_value: 40, grade: "PSA 10", front_path: ph("#03202F","#A71930","Stroud RR") }],
         [["checked_in", d(120)], ["shipped_to_grader", d(118)], ["psa_arrived", d(110)], ["psa_grading", d(90)], ["psa_shipped", d(70)], ["ready", d(64), "Grades are in. Come by any day 11 to 7."]]),
       mk({ ticket: "PBG-261015-A9G", customer_first: "Kayla", customer_last: "Brooks", phone: "281-555-0161", contact_pref: "Text", email: "kayla@example.com", grader: "None", tier: null, grade_each: 0, has_prep: false, total: 0, payment_when: "dropoff", payment_method: "None due", created_at: d(25), received_by: "Jordan",
-          auction_house: "Goldin", auction_mode: "standalone", payout_method: "Zelle", payout_details: "281-555-0161" },
+          auction_house: "Goldin", auction_mode: "standalone", payout_method: "PayPal", payout_details: "kayla@example.com" },
         [{ category: "Sports", name: "Patrick Mahomes", year: "2017", set_name: "Prizm", card_number: "269", variant: "Rookie", declared_value: 2400, grade: "PSA 10", cert_number: "71234567", hammer_price: 2650, front_path: ph("#E31837","#FFB612","Mahomes RC") },
          { category: "Pokémon", name: "Umbreon VMAX", year: "2021", set_name: "Evolving Skies", card_number: "215", variant: "Alt Art", declared_value: 1500, grade: "CGC 9.5", cert_number: "4210098765", hammer_price: 1320, front_path: ph("#1B1B3A","#F2D16B","Umbreon VMAX") }],
         [["checked_in", d(25)], ["auction_sent", d(23)], ["auction_received", d(18)], ["auction_live", d(9)], ["auction_sold", d(2), "Both cards sold. Goldin pays out in about two weeks, then we pay you."]]),
       mk({ ticket: "PBG-261101-F2X", customer_first: "Chris", customer_last: "Vega", phone: "713-555-0133", contact_pref: "Text", grader: "PSA", tier: "Value", grade_each: 25, has_prep: true, total: 54, payment_when: "dropoff", created_at: d(8), received_by: "Alex",
-          auction_house: "Fanatics Collect", auction_mode: "after_grading", payout_method: "Check", payout_details: "Chris Vega" },
+          auction_house: "Fanatics Collect", auction_mode: "after_grading", payout_method: "Wire transfer", payout_details: "Chris Vega" },
         [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", variant: "Special Illustration Rare", declared_value: 300, clean: true, front_path: ph("#B3121A","#F5C518","Charizard ex") }],
         [["checked_in", d(8)], ["at_partner", d(7)], ["prep_done", d(4)], ["shipped_to_grader", d(3)]])
     ];

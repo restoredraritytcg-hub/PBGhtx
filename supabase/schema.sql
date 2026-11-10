@@ -238,8 +238,8 @@ create trigger orders_after_insert after insert on public.orders
 -- =====================================================================
 alter table public.orders add column if not exists auction_house   text;          -- 'Alt', 'Fanatics Collect', 'Goldin' or 'Best fit'
 alter table public.orders add column if not exists auction_mode    text;          -- 'after_grading' or 'standalone'
-alter table public.orders add column if not exists payout_method   text;          -- 'Zelle', 'Check', 'Store credit', 'Cash at the shop'
-alter table public.orders add column if not exists payout_details  text;          -- e.g. the Zelle phone or email
+alter table public.orders add column if not exists payout_method   text;          -- 'Wire transfer' or 'PayPal'
+alter table public.orders add column if not exists payout_details  text;          -- PayPal email, or the name on the bank account for a wire (bank details are never stored here)
 alter table public.orders add column if not exists auction_paid_at timestamptz;   -- when PBG paid the customer
 alter table public.cards  add column if not exists hammer_price    numeric(12,2); -- final winning bid, before buyer's premium
 alter table public.cards  add column if not exists auction_lot_url text;          -- link to the lot on the auction site
