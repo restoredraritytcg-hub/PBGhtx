@@ -16,6 +16,9 @@ window.PBG_CONFIG = {
     noticePeriodDays: 30     // pickup deadline in the final notice is at least this many days after it is sent
   },
 
+  // Auction houses offered at check-in (customer keeps 100% of the hammer price).
+  auctionHouses: ["Alt", "Fanatics Collect", "Goldin"],
+
   // Repairs dropped off at PBG go straight to Restored Rarity's website backend.
   // These are the same public values restoredraritytcg.com uses (portal/config.js and SUBMIT_ENDPOINT).
   // Nothing is sent while PBG is in demo mode.

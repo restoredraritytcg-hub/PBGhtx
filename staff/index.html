@@ -83,6 +83,7 @@ label.f .t{margin-top:4px}
 .stage.partner{background:#EFE9FB;color:var(--violet)}
 .stage.ship,.stage.grader{background:#FFF1DB;color:var(--amber)}
 .stage.ready{background:#DDF3E6;color:var(--green)}
+.stage.auction{background:#E6EEF8;color:#1F3B63}
 .stage.done{background:#EDEDED;color:#555}
 .prog{height:5px;border-radius:5px;background:#EEE;margin-top:6px;overflow:hidden;max-width:220px}
 .prog i{display:block;height:100%;background:var(--red)}
@@ -98,6 +99,7 @@ label.f .t{margin-top:4px}
 @media (max-width:1000px){.dgrid{grid-template-columns:1fr}}
 .panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
 .panel+.panel{margin-top:16px}
+.kv .panel+.panel{margin-top:0}
 .dhead{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .dhead .meta{color:var(--steel);font-size:14px;margin-top:6px}
 .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:16px}
@@ -172,7 +174,7 @@ let me = null, stages = [], orders = [], view = { group: "open", grader: "all", 
 /* stage helpers */
 function info(o){
   const list = PBG.stageList(o, stages), idx = Math.max(0, list.findIndex(s => s.code === o.current_stage)), cur = list[idx] || { label: o.current_stage, phase: "shop" };
-  const cls = o.current_stage === "picked_up" ? "done" : o.current_stage === "ready" ? "ready" : cur.phase;
+  const cls = ["picked_up","auction_paid"].includes(o.current_stage) ? "done" : o.current_stage === "ready" ? "ready" : cur.phase;
   return { list, idx, cur, cls, pct: Math.round(idx / Math.max(1, list.length - 1) * 100), next: list[idx+1] || null };
 }
 /* pickup / unclaimed-card clock (terms section 10) */
@@ -191,13 +193,15 @@ function pickup(o){
     overdue: days > PICKUP.freeDays, noticeNeeded: days >= PICKUP.finalNoticeDay && !o.final_notice_at, deadlinePassed };
 }
 const GROUPS = [
-  ["open", "All open", o => o.current_stage !== "picked_up"],
+  ["open", "All open", o => !["picked_up","auction_paid"].includes(o.current_stage)],
   ["shop", "At PBG", o => ["checked_in","prep_done"].includes(o.current_stage)],
   ["partner", "At Restored Rarity", o => o.current_stage === "at_partner"],
   ["grader", "At grader", o => { const p = info(o).cur.phase; return p === "ship" || p === "grader"; }],
+  ["auction", "At auction", o => String(o.current_stage).startsWith("auction_") && o.current_stage !== "auction_paid"],
+  ["payout", "Auction payout due", o => o.current_stage === "auction_sold"],
   ["ready", "Ready for pickup", o => o.current_stage === "ready"],
   ["overdue", "Pickup overdue", o => { const p = pickup(o); return !!p && p.overdue; }],
-  ["done", "Picked up", o => o.current_stage === "picked_up"],
+  ["done", "Picked up or paid out", o => ["picked_up","auction_paid"].includes(o.current_stage)],
   ["all", "Everything", () => true]
 ];
 
@@ -210,12 +214,13 @@ async function boot(){
   bar(); route();
 }
 function bar(){
-  $("#barRight").innerHTML = me ? `${me.role === "owner" ? `<a class="btn btn-line btn-sm" href="#team">Team</a>` : ""}${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  $("#barRight").innerHTML = me ? `${me.role === "owner" ? `<a class="btn btn-line btn-sm" href="#team">Team</a>` : ""}${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","staff"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#auctions">Auctions</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
   const o = $("#out"); if(o) o.onclick = async () => { await PBG.signOut(); me = null; selected.clear(); view = { group: "open", grader: "all", q: "" }; bar(); location.hash = ""; signInView(); };
 }
 window.addEventListener("hashchange", () => me && route());
 function route(){
   if(location.hash === "#team" && me.role === "owner") return teamPage();
+  if(location.hash === "#auctions" && ["owner","staff"].includes(me.role)) return auctionsPage();
   if(me.role === "web" || (me.role === "owner" && location.hash.startsWith("#site"))) return sitePage(location.hash.replace(/^#site\/?/, ""));
   if(location.hash === "#payouts" && ["owner","partner"].includes(me.role)) return payouts();
   const id = location.hash.replace(/^#order-/, ""); if(location.hash.startsWith("#order-") && id) detail(id); else list();
@@ -358,7 +363,7 @@ function drawList(){
         <span><input type="checkbox" data-sel="${o.id}" aria-label="Select ${esc(o.ticket)}" ${selected.has(o.id) ? "checked" : ""}></span>
         <span><span class="tk">${esc(o.ticket)}</span><small>${o.card_count} card${o.card_count===1?"":"s"}${o.has_prep ? ' &nbsp;<span class="tag">Prep</span>' : ""}</small></span>
         <span>${esc(o.customer_first)} ${esc(o.customer_last)}<small>${me.role === "partner" ? "" : esc(o.phone)}</small></span>
-        <span class="hide-sm">${o.grader === "None" ? "Prep only" : esc(PBG.graderName(o.grader))}<small>${esc(o.tier || "")}</small></span>
+        <span class="hide-sm">${o.grader === "None" ? (o.auction_mode === "standalone" ? "Auction only" : "Prep only") : esc(PBG.graderName(o.grader))}<small>${esc(o.tier || "")}${o.auction_house ? (o.tier ? " · " : "") + "Auction: " + esc(o.auction_house === "Best fit" ? "PBG picks" : o.auction_house) : ""}</small></span>
         <span><span class="stage ${s.cls}">${esc(s.cur.label)}</span><div class="prog"><i style="width:${s.pct}%"></i></div></span>
         <span class="hide-sm"><small>${ago(o.updated_at || o.created_at)}</small></span></div>`; }).join("")
       : `<div class="empty">${orders.length ? "No orders match these filters." : "No orders yet. Submissions from the shop iPad show up here."}</div>`}
@@ -400,7 +405,8 @@ async function detail(id){
   const canSet = st => !partner || st.phase === "partner";
   const link = PBG.statusUrl(o.public_token);
   const smsBody = `Hi ${o.customer_first}, it's PBG Cards & Collectibles. Your ticket ${o.ticket} is now at: ${s.cur.label}. Track it here: ${link}`;
-  const lastPhase = l => ({ shop: "PBG", partner: "Restored Rarity", ship: "Shipping", grader: PBG.graderName(o.grader) }[l]);
+  const lastPhase = l => ({ shop: "PBG", partner: "Restored Rarity", ship: "Shipping", grader: PBG.graderName(o.grader), auction: "Auction" }[l]);
+  const hammer = o.cards.reduce((a, c) => a + (+c.hammer_price || 0), 0);
   let prevPhase = null;
 
   $("#app").innerHTML = `<div class="wrap">
@@ -416,7 +422,10 @@ async function detail(id){
           <div><span>Email</span><b>${o.email ? `<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>` : "None"}</b></div>
           <div><span>Reach by</span><b>${esc(o.contact_pref || "Text")}</b></div>
           <div><span>Mailing address</span><b>${esc(o.mailing_address || "None")}</b></div>`}
-          <div><span>Grading</span><b>${o.grader === "None" ? "None, prep only" : esc(PBG.graderName(o.grader) + " " + (o.tier || ""))}</b></div>
+          <div><span>Grading</span><b>${o.grader === "None" ? (o.auction_mode === "standalone" ? "None, auction only" : "None, prep only") : esc(PBG.graderName(o.grader) + " " + (o.tier || ""))}</b></div>
+          ${o.auction_house ? `<div><span>Auction</span><b>${esc(o.auction_house === "Best fit" ? "PBG picks the house" : o.auction_house)}${o.auction_mode === "after_grading" ? ", after grading" : ""}</b></div>
+          ${partner ? "" : `<div><span>Pay the customer by</span><b>${esc(o.payout_method || "Not set")}${o.payout_details ? ": " + esc(o.payout_details) : ""}</b></div>
+          <div><span>Hammer total, owed to customer</span><b>${money(hammer)}</b></div>`}` : ""}
           ${o.if_low_grade ? `<div><span>If evaluation is low</span><b>${esc({call:"Call customer first",submit:"Submit anyway",return:"Return ungraded"}[o.if_low_grade] || o.if_low_grade)}</b></div>` : ""}
           ${partner ? "" : `<div><span>Total</span><b>${money(o.total)} ${o.payment_when === "pickup" ? "due at pickup" : "paid"}</b></div>`}
           ${me.role === "owner" ? `<div><span>Owed to ${o.grader === "None" ? "grader" : esc(PBG.graderName(o.grader))}</span><b>${money(o.grader_fees)}</b></div><div><span>PBG share</span><b>${money(o.pbg_share)}</b></div>` : ""}
@@ -449,7 +458,9 @@ async function detail(id){
               ${c.repair ? `<label class="f">Repair quote $<input class="t" data-f="repair_quote" type="number" inputmode="decimal" value="${esc(c.repair_quote)}"></label>` : ""}
               ${partner ? "" : `<label class="f">Grade<input class="t" data-f="grade" value="${esc(c.grade)}" placeholder="${esc(o.grader === "None" ? "" : "e.g. " + PBG.graderName(o.grader) + " 10")}"></label>
               <label class="f">Cert number<input class="t" data-f="cert_number" value="${esc(c.cert_number)}"></label>
-              <label class="f">Card status<input class="t" data-f="card_status" value="${esc(c.card_status)}" placeholder="e.g. Pulled, returned ungraded"></label>`}
+              <label class="f">Card status<input class="t" data-f="card_status" value="${esc(c.card_status)}" placeholder="e.g. Pulled, returned ungraded"></label>
+              ${o.auction_house ? `<label class="f">Hammer price $<input class="t" data-f="hammer_price" type="number" inputmode="decimal" value="${esc(c.hammer_price)}"></label>
+              <label class="f">Auction lot link<input class="t" data-f="auction_lot_url" value="${esc(c.auction_lot_url)}" placeholder="https://…"></label>` : ""}`}
               <div style="align-self:end"><button class="btn btn-ink btn-sm" data-save="${c.id}">Save card</button></div>
             </div></div></div>`; }).join("")}
       </div>
@@ -582,6 +593,79 @@ function finalNoticeLetter(o){
   <p>If you believe this notice is in error or need to make other arrangements, call us at 832-610-7081 before the date above.</p>
   <p>Sincerely,<br><br>PBG Cards &amp; Collectibles HTX</p></body></html>`);
   w.document.close();
+}
+
+/* ---------- auctions: every consignment, auction-only or after grading ---------- */
+const AUC_GROUPS = [
+  ["open", "All open", o => o.current_stage !== "auction_paid"],
+  ["prep", "Not sent yet", o => !String(o.current_stage).startsWith("auction_")],
+  ["house", "At the auction house", o => ["auction_sent","auction_received"].includes(o.current_stage)],
+  ["live", "Live", o => o.current_stage === "auction_live"],
+  ["sold", "Sold, pay the customer", o => o.current_stage === "auction_sold"],
+  ["paid", "Paid out", o => o.current_stage === "auction_paid"],
+  ["all", "Everything", () => true]
+];
+let aview = { group: "open", house: "all", mode: "all", q: "" }, aorders = [];
+async function auctionsPage(){
+  $("#app").innerHTML = `<div class="wrap"><div class="empty">Loading auctions…</div></div>`;
+  try{ aorders = await PBG.auctionOrders(); }catch(e){ $("#app").innerHTML = `<div class="wrap"><div class="panel">Couldn't load auctions: ${esc(e.message)}</div></div>`; return; }
+  drawAuctions();
+}
+function drawAuctions(){
+  const hammer = o => o.cards.reduce((a, c) => a + (+c.hammer_price || 0), 0), est = o => o.cards.reduce((a, c) => a + (+c.declared_value || 0), 0);
+  const q = aview.q.toLowerCase(), houses = [...new Set(aorders.map(o => o.auction_house))].sort();
+  const base = aorders.filter(o => (aview.house === "all" || o.auction_house === aview.house) && (aview.mode === "all" || o.auction_mode === aview.mode))
+    .filter(o => !q || [o.ticket, o.customer_first + " " + o.customer_last, o.phone, ...o.cards.map(c => c.name + " " + (c.cert_number || ""))].join(" ").toLowerCase().includes(q));
+  const g = AUC_GROUPS.find(x => x[0] === aview.group), rows = base.filter(g[2]);
+  const sum = (list, f) => list.reduce((a, o) => a + f(o), 0), cardsIn = list => sum(list, o => o.cards.length);
+  const atHouse = aorders.filter(AUC_GROUPS[2][2]), live = aorders.filter(AUC_GROUPS[3][2]), sold = aorders.filter(AUC_GROUPS[4][2]), paid = aorders.filter(AUC_GROUPS[5][2]);
+  const yr = new Date().getFullYear(), paidYr = paid.filter(o => new Date(o.auction_paid_at || o.updated_at).getFullYear() === yr);
+  const stageLabel = o => { const st = PBG.stageList(o, stages).find(x => x.code === o.current_stage); return st ? st.label : o.current_stage; };
+  const cls = o => o.current_stage === "auction_paid" ? "done" : String(o.current_stage).startsWith("auction_") ? "auction" : "shop";
+  const house = h => h === "Best fit" ? "PBG picks" : h;
+  $("#app").innerHTML = `<div class="wrap">
+    <div class="top"><h1>Auctions</h1><input class="t search" id="aq" placeholder="Search ticket, customer, card or cert #" value="${esc(aview.q)}"></div>
+    <div class="kv" style="margin:0 0 16px">
+      <div class="panel"><span>At the auction house</span><b style="font-size:24px">${cardsIn(atHouse)} card${cardsIn(atHouse) === 1 ? "" : "s"}</b><small style="display:block;color:var(--steel)">${atHouse.length} ticket${atHouse.length === 1 ? "" : "s"}</small></div>
+      <div class="panel"><span>Live now</span><b style="font-size:24px">${cardsIn(live)} card${cardsIn(live) === 1 ? "" : "s"}</b><small style="display:block;color:var(--steel)">estimated ${money(sum(live, est))}</small></div>
+      <div class="panel" style="border-color:var(--red)"><span>Sold, owed to customers</span><b style="font-size:24px">${money(sum(sold, hammer))}</b><small style="display:block;color:var(--steel)">${sold.length} ticket${sold.length === 1 ? "" : "s"} to pay out</small></div>
+      <div class="panel"><span>Paid out in ${yr}</span><b style="font-size:24px">${money(sum(paidYr, hammer))}</b><small style="display:block;color:var(--steel)">${cardsIn(paidYr)} cards sold</small></div>
+    </div>
+    <div class="groups">${AUC_GROUPS.map(([k, l, f]) => `<button class="chip" data-ag="${k}" aria-pressed="${aview.group === k}">${l} <b>${base.filter(f).length}</b></button>`).join("")}</div>
+    <div class="graders"><button class="chip" data-ah="all" aria-pressed="${aview.house === "all"}">All houses</button>${houses.map(h => `<button class="chip" data-ah="${esc(h)}" aria-pressed="${aview.house === h}">${esc(house(h))}</button>`).join("")}
+      <span style="width:12px"></span>${[["all","Both ways"],["standalone","Auction only"],["after_grading","After grading"]].map(([k, l]) => `<button class="chip" data-am="${k}" aria-pressed="${aview.mode === k}">${l}</button>`).join("")}</div>
+    <div class="table">
+      <div class="row h" style="grid-template-columns:1fr 1.1fr 1fr .9fr .5fr .8fr .8fr 1.2fr;cursor:default"><span>Ticket</span><span>Customer</span><span>Service</span><span>House</span><span>Cards</span><span>Estimated</span><span>Hammer</span><span>Stage</span></div>
+      ${rows.length ? rows.map(o => `<div class="row" data-oid="${esc(o.id)}" style="grid-template-columns:1fr 1.1fr 1fr .9fr .5fr .8fr .8fr 1.2fr">
+        <span class="tk">${esc(o.ticket)}<small>${fmtDate(o.created_at)}</small></span>
+        <span>${esc(o.customer_first)} ${esc(o.customer_last)}<small>${esc(o.payout_method || "")}${o.payout_details ? ": " + esc(o.payout_details) : ""}</small></span>
+        <span>${o.auction_mode === "standalone" ? "Auction only" : "After " + esc(PBG.graderName(o.grader)) + " grading"}</span>
+        <span>${esc(house(o.auction_house))}</span><span>${o.cards.length}</span><span>${money(est(o))}</span><span>${hammer(o) ? "<b>" + money(hammer(o)) + "</b>" : "—"}</span>
+        <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="stage ${cls(o)}">${esc(stageLabel(o))}</span>${o.current_stage === "auction_sold" ? `<button class="btn btn-ink btn-sm" data-paid="${esc(o.id)}">Mark paid out</button>` : ""}</span></div>`).join("")
+        : `<div class="empty">No auction tickets here.</div>`}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-line btn-sm" id="acsv">Copy as CSV</button></div>
+    <p style="color:var(--steel);font-size:14px;margin-top:12px">Customers get 100% of the hammer price. Enter each card's hammer price on the order when the auction closes, move it to Sold, then Mark paid out once you've paid them.</p></div>`;
+  $("#aq").oninput = e => { aview.q = e.target.value; const pos = e.target.selectionStart; drawAuctions(); const n = $("#aq"); n.focus(); n.setSelectionRange(pos, pos); };
+  document.querySelectorAll("[data-ag]").forEach(b => b.onclick = () => { aview.group = b.dataset.ag; drawAuctions(); });
+  document.querySelectorAll("[data-ah]").forEach(b => b.onclick = () => { aview.house = b.dataset.ah; drawAuctions(); });
+  document.querySelectorAll("[data-am]").forEach(b => b.onclick = () => { aview.mode = b.dataset.am; drawAuctions(); });
+  document.querySelectorAll("[data-oid]").forEach(r => r.onclick = e => { if(e.target.closest("[data-paid]")) return; location.hash = "#order-" + r.dataset.oid; });
+  document.querySelectorAll("[data-paid]").forEach(b => b.onclick = async () => {
+    const o = aorders.find(x => x.id === b.dataset.paid);
+    if(!hammer(o)){ toast("Enter the hammer prices on the order first."); return; }
+    if(!await confirmBox("Mark this ticket paid out?", `${o.customer_first} ${o.customer_last} gets ${money(hammer(o))} by ${o.payout_method || "their payout method"}. They'll see "Paid out" on their status page.`, "Mark paid out")) return;
+    b.disabled = true;
+    try{ await PBG.setStage(o.id, "auction_paid", `Paid ${money(hammer(o))} by ${o.payout_method || "payout"}.`, true, true); toast("Marked paid out"); auctionsPage(); }
+    catch(e){ toast(e.message); b.disabled = false; }
+  });
+  $("#acsv").onclick = async () => {
+    const lines = [["Ticket","Date","Customer","Service","House","Card","Grade","Cert","Estimated","Hammer","Stage","Payout method","Payout details","Paid out"]];
+    rows.forEach(o => o.cards.forEach(c => lines.push([o.ticket, o.created_at.slice(0,10), o.customer_first + " " + o.customer_last, o.auction_mode === "standalone" ? "Auction only" : "After grading", o.auction_house,
+      [c.year, c.set_name, c.name].filter(Boolean).join(" "), c.grade || "", c.cert_number || "", c.declared_value || 0, c.hammer_price || "", stageLabel(o), o.payout_method || "", o.payout_details || "", o.auction_paid_at ? o.auction_paid_at.slice(0,10) : ""])));
+    const csv = lines.map(l => l.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
+    try{ await navigator.clipboard.writeText(csv); toast("CSV copied"); }catch(e){ toast("Couldn't copy here"); }
+  };
 }
 
 /* ---------- payouts ---------- */

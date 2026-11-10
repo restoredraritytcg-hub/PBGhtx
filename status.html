@@ -108,9 +108,11 @@ async function load(){
   const reached = {}; (o.events || []).forEach(e => { if(!reached[e.stage]) reached[e.stage] = e.at; });
   const pct = Math.round(idx / Math.max(1, list.length - 1) * 100);
   const gname = o.grader === "None" ? null : PBG.graderName(o.grader);
-  const phaseName = p => ({ shop: "At PBG", partner: "Prep with Restored Rarity TCG", ship: "Shipping", grader: "At " + gname }[p]);
+  const house = o.auction_house && o.auction_house !== "Best fit" ? o.auction_house : "the auction house";
+  const phaseName = p => ({ shop: "At PBG", partner: "Prep with Restored Rarity TCG", ship: "Shipping", grader: "At " + gname, auction: "Auction at " + house }[p]);
+  const hammer = o.cards.reduce((a, c) => a + (+c.hammer_price || 0), 0);
   const notes = (o.events || []).filter(e => e.note).reverse();
-  const done = o.current_stage === "ready" || o.current_stage === "picked_up";
+  const done = ["ready","picked_up","auction_sold","auction_paid"].includes(o.current_stage);
   let prev = null;
   document.title = `${o.ticket} | PBG Cards & Collectibles HTX`;
 
@@ -118,8 +120,9 @@ async function load(){
     <div class="hero">
       <p class="tk">Ticket ${esc(o.ticket)} &nbsp; Checked in ${fmt(o.created_at)}</p>
       <h1>Hi ${esc(o.first_name)}, here's where your cards are.</h1>
-      <p class="muted" style="margin-top:8px">${o.cards.length} card${o.cards.length === 1 ? "" : "s"} ${gname ? `for ${esc(gname)} ${esc(o.tier || "")} grading` : "for prep with Restored Rarity TCG"}.</p>
+      <p class="muted" style="margin-top:8px">${o.cards.length} card${o.cards.length === 1 ? "" : "s"} ${gname ? `for ${esc(gname)} ${esc(o.tier || "")} grading` : o.auction_house ? "for auction" : "for prep with Restored Rarity TCG"}${o.auction_house ? (gname ? `, then auction at ${esc(house)}` : ` at ${esc(house)}`) : ""}.</p>
       <div class="now"><span>${done ? "Good news" : "Current stage"}</span><h2>${esc(cur.label)}</h2><p>${esc(cur.customer_text)}</p>
+        ${o.auction_house && hammer ? `<p style="color:#fff;margin-top:10px">Hammer price so far: <b>$${hammer.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>. You get 100% of it.</p>` : ""}
         ${o.current_stage === "ready" && o.payment_when === "pickup" ? `<p style="color:#fff;margin-top:10px">Balance due at pickup: <b>$${(+o.total || 0).toFixed(2)}</b></p>` : ""}</div>
       <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Order progress"><i style="width:${pct}%"></i></div>
       <div class="barl"><span>Step ${idx + 1} of ${list.length}</span><span>${pct}%</span></div>
@@ -143,6 +146,7 @@ async function load(){
         ${c.repair ? `<p class="eval">Repairs are handled by Restored Rarity TCG, who send you their own quote and tracking link.</p>` : ""}
         ${c.card_status ? `<p class="eval">${esc(c.card_status)}</p>` : ""}
         ${c.grade ? `<span class="grade">${esc(c.grade)}</span>${c.cert_number ? `<p class="meta" style="margin-top:6px">Cert #${esc(c.cert_number)}</p>` : ""}` : ""}
+        ${c.hammer_price ? `<p class="eval"><b>Sold for $${(+c.hammer_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> (hammer price, yours in full)${c.auction_lot_url && /^https:\/\//.test(c.auction_lot_url) ? ` · <a href="${esc(c.auction_lot_url)}" style="color:#fff">See the lot</a>` : ""}</p>` : ""}
       </div></div>`; }).join("")}</div></section>
     ${HELP}`;
 }

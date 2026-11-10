@@ -104,12 +104,19 @@ insert into public.grader_stages (grader, position, code, label, customer_text) 
   ('*generic', 3, 'gen_shipped', 'Shipped from {grader}', '{grader} shipped your cards back to PBG.'),
 
   ('*post', 1, 'ready',     'Ready for pickup', 'Your cards are back at PBG. Bring your ticket number and a photo ID.'),
-  ('*post', 2, 'picked_up', 'Picked up',        'You picked up your cards. Thanks for submitting with PBG.')
+  ('*post', 2, 'picked_up', 'Picked up',        'You picked up your cards. Thanks for submitting with PBG.'),
+
+  -- Auction orders end here instead of *post ({house} = the auction house on the order)
+  ('*auction', 1, 'auction_sent',     'Sent to {house}',     'Your cards are on the way to {house} for auction.'),
+  ('*auction', 2, 'auction_received', 'Received by {house}', '{house} has your cards and is placing them in an upcoming auction.'),
+  ('*auction', 3, 'auction_live',     'Auction live',        'Your cards are up for bidding. We''ll send the results when the auction closes.'),
+  ('*auction', 4, 'auction_sold',     'Sold',                'Your auction closed. We''ll pay you 100% of the hammer price as soon as {house} pays us.'),
+  ('*auction', 5, 'auction_paid',     'Paid out',            'We''ve paid you 100% of the hammer price. Thanks for consigning with PBG.')
 on conflict (code) do nothing;
 
 -- Quieter defaults: skip emails for short in-between steps. Change any row to true/false later.
 update public.grader_stages set notify_customer = false
- where code in ('psa_order_prep','psa_qa1','psa_qa2','cgc_received','cgc_qc','bgs_invoiced','sgc_received','sgc_qc','tag_received','tag_qa');
+ where code in ('psa_order_prep','psa_qa1','psa_qa2','cgc_received','cgc_qc','bgs_invoiced','sgc_received','sgc_qc','tag_received','tag_qa','auction_received');
 
 -- ---------------------------------------------------------------------
 -- Orders, cards, stage history
@@ -223,6 +230,21 @@ drop trigger if exists orders_after_insert on public.orders;
 create trigger orders_after_insert after insert on public.orders
   for each row execute function public.orders_after_insert();
 
+-- =====================================================================
+-- Auction consignment (Alt, Fanatics Collect, Goldin).
+-- Straight to auction after grading, or slabs brought in for auction only.
+-- The customer gets 100% of the hammer price; PBG keeps any seller bonus
+-- or buyer's-premium share the auction house pays.
+-- =====================================================================
+alter table public.orders add column if not exists auction_house   text;          -- 'Alt', 'Fanatics Collect', 'Goldin' or 'Best fit'
+alter table public.orders add column if not exists auction_mode    text;          -- 'after_grading' or 'standalone'
+alter table public.orders add column if not exists payout_method   text;          -- 'Zelle', 'Check', 'Store credit', 'Cash at the shop'
+alter table public.orders add column if not exists payout_details  text;          -- e.g. the Zelle phone or email
+alter table public.orders add column if not exists auction_paid_at timestamptz;   -- when PBG paid the customer
+alter table public.cards  add column if not exists hammer_price    numeric(12,2); -- final winning bid, before buyer's premium
+alter table public.cards  add column if not exists auction_lot_url text;          -- link to the lot on the auction site
+create index if not exists orders_auction_idx on public.orders (auction_house) where auction_house is not null;
+
 -- Move an order to a stage and log it (used by the staff portal)
 drop function if exists public.set_order_stage(uuid, text, text, boolean);
 create or replace function public.set_order_stage(p_order uuid, p_stage text, p_note text default null, p_visible boolean default true, p_email boolean default null)
@@ -236,7 +258,8 @@ begin
   end if;
   if not exists (select 1 from public.grader_stages where code = p_stage) then raise exception 'Unknown stage %', p_stage; end if;
   update public.orders set current_stage = p_stage, updated_at = now(),
-         ready_at = case when p_stage = 'ready' then coalesce(ready_at, now()) else ready_at end
+         ready_at = case when p_stage = 'ready' then coalesce(ready_at, now()) else ready_at end,
+         auction_paid_at = case when p_stage = 'auction_paid' then coalesce(auction_paid_at, now()) else auction_paid_at end
    where id = p_order;
   insert into public.stage_events (order_id, stage, note, visible_to_customer, email_customer, created_by_name)
   values (p_order, p_stage, nullif(trim(p_note), ''), p_visible,
@@ -251,11 +274,13 @@ returns json language sql stable security definer set search_path = public as $$
     'ticket', o.ticket, 'first_name', o.customer_first, 'created_at', o.created_at,
     'grader', o.grader, 'tier', o.tier, 'has_prep', o.has_prep, 'current_stage', o.current_stage,
     'total', o.total, 'payment_when', o.payment_when, 'return_tracking', o.return_tracking,
+    'auction_house', o.auction_house, 'auction_mode', o.auction_mode,
     'cards', coalesce((select json_agg(json_build_object(
         'position', c.position, 'name', c.name, 'year', c.year, 'set_name', c.set_name, 'card_number', c.card_number,
         'variant', c.variant, 'category', c.category, 'clean', c.clean, 'eval', c.eval, 'repair', c.repair, 'gem', c.gem, 'gem_fee', c.gem_fee,
         'front_path', c.front_path, 'eval_result', c.eval_result, 'repair_quote', c.repair_quote,
-        'grade', c.grade, 'cert_number', c.cert_number, 'card_status', c.card_status) order by c.position)
+        'grade', c.grade, 'cert_number', c.cert_number, 'card_status', c.card_status,
+        'hammer_price', c.hammer_price, 'auction_lot_url', c.auction_lot_url) order by c.position)
       from public.cards c where c.order_id = o.id), '[]'::json),
     'events', coalesce((select json_agg(json_build_object('stage', e.stage, 'note', e.note, 'at', e.created_at) order by e.created_at)
       from public.stage_events e where e.order_id = o.id and e.visible_to_customer), '[]'::json)
@@ -563,3 +588,4 @@ revoke all on function public.staff_pin_match(text) from public, anon, authentic
 revoke all on function public.staff_pin_set(uuid, text) from public, anon, authenticated;
 grant execute on function public.staff_pin_match(text) to service_role;
 grant execute on function public.staff_pin_set(uuid, text) to service_role;
+

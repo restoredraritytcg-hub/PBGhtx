@@ -172,6 +172,15 @@ section{padding:96px 0}
 .map .fallback{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:6px;padding:24px}
 .map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.3) contrast(1.05)}
 
+.auction .ways{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:28px}
+.auction .way{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+.auction .way .n{display:inline-grid;place-items:center;width:40px;height:40px;background:var(--red);color:#fff;font-weight:900;font-style:italic;font-size:18px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);margin-bottom:12px}
+.auction .way p{color:var(--smoke);margin-top:8px;font-size:16px}
+.auction .houses{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.auction .houses span{border:2px solid var(--white);padding:8px 18px;font-weight:900;font-style:italic;font-size:18px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.auction .houses .pick{border-color:var(--line);color:var(--smoke);font-size:15px;font-weight:700}
+.auction .fine{color:var(--smoke);font-size:14px;margin-top:16px;max-width:760px}
+@media (max-width:900px){.auction .ways{grid-template-columns:1fr}}
 #announce{background:var(--red);color:#fff;text-align:center;font-weight:800;font-size:15px;padding:10px 16px}
 #announce.black{background:#000;border-bottom:1px solid var(--line)}
 #announce.gold{background:#F5C518;color:#111}
@@ -197,6 +206,7 @@ footer img{height:64px;width:auto}
     <a class="logo" href="#" aria-label="PBG Cards & Collectibles HTX home"><img src="assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX" width="760" height="390"></a>
     <nav aria-label="Main">
       <a href="#grading">Grading</a>
+      <a href="#auction">Auction</a>
       <a href="#shop">In the shop</a>
       <a href="#sell">Sell your cards</a>
       <a href="#visit">Visit</a>
@@ -263,6 +273,23 @@ footer img{height:64px;width:auto}
       <div class="dropoff"><b>Authorized Restored Rarity drop-off</b><span>Need a card repaired or restored? PBG is an authorized drop-off location for Restored Rarity. Check it in at the counter and it goes straight to Restored Rarity, who send you their own quote and tracking link.</span></div>
       <p class="note">PBG partner pricing. More about Restored Rarity at <a href="https://restoredraritytcg.com">restoredraritytcg.com</a>.</p>
     </aside>
+  </div>
+</section>
+
+<section id="auction" class="auction">
+  <div class="wrap">
+    <div class="head">
+      <h2>Sell at auction. Keep 100% of the hammer.</h2>
+      <p>We consign your cards to Alt, Fanatics Collect or Goldin for you. You get every dollar of the winning bid; the auction house's buyer's premium is paid by the buyer, and PBG charges you no seller fee.</p>
+    </div>
+    <div class="ways">
+      <div class="way"><span class="n">1</span><h3>Grade, then straight to auction</h3><p>Submitting for grading? Pick "Send straight to auction" at check-in. Your slabs go to the auction house as soon as they're graded, so you never have to ship them twice.</p></div>
+      <div class="way"><span class="n">2</span><h3>Auction only</h3><p>Already have slabs? Bring them to the counter and choose "Auction only". We check each slab in, photograph it and send it off with our next consignment.</p></div>
+      <div class="way"><span class="n">3</span><h3>Get paid</h3><p>Follow your cards from the QR code on your receipt, right through to the final bid. When the auction house pays us, we pay you by Zelle, check, cash or store credit.</p></div>
+    </div>
+    <div class="houses"><span>Alt</span><span>Fanatics Collect</span><span>Goldin</span><span class="pick">Not sure? We pick the best fit</span></div>
+    <p class="fine">Each auction house decides which cards and grading companies it accepts and when a card is listed. Prices aren't guaranteed. Full details are in the terms you sign at check-in.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px"><a class="btn btn-red" href="https://www.google.com/maps/dir/?api=1&destination=PBG+Cards+%26+Collectibles+25170+I-45+N+Unit+9+Spring+TX+77386">Bring your slabs in</a><a class="btn btn-white" href="tel:+18326107081">Ask about a big card</a></div>
   </div>
 </section>
 

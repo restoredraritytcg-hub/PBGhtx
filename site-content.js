@@ -194,7 +194,7 @@
     try{
       const saved = JSON.parse(localStorage.getItem("pbg.site.v1")) || {};
       const out = Object.fromEntries(Object.entries(saved).map(([k, v]) => [k, v.value]));
-      const demo = JSON.parse(localStorage.getItem("pbg.demo.v14") || "null");
+      const demo = JSON.parse(localStorage.getItem("pbg.demo.v15") || "null");
       if(demo && demo.pricing && demo.pricing.rules) out.pricing = demo.pricing.rules;
       return out;
     }catch(e){ return {}; }

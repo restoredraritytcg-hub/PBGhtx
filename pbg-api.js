@@ -45,9 +45,14 @@
     ["*generic",2,"gen_grading","Grading","Your cards are being graded."],
     ["*generic",3,"gen_shipped","Shipped from {grader}","{grader} shipped your cards back to PBG."],
     ["*post",1,"ready","Ready for pickup","Your cards are back at PBG. Bring your ticket number and a photo ID."],
-    ["*post",2,"picked_up","Picked up","You picked up your cards. Thanks for submitting with PBG."]
+    ["*post",2,"picked_up","Picked up","You picked up your cards. Thanks for submitting with PBG."],
+    ["*auction",1,"auction_sent","Sent to {house}","Your cards are on the way to {house} for auction."],
+    ["*auction",2,"auction_received","Received by {house}","{house} has your cards and is placing them in an upcoming auction."],
+    ["*auction",3,"auction_live","Auction live","Your cards are up for bidding. We'll send the results when the auction closes."],
+    ["*auction",4,"auction_sold","Sold","Your auction closed. We'll pay you 100% of the hammer price as soon as {house} pays us."],
+    ["*auction",5,"auction_paid","Paid out","We've paid you 100% of the hammer price. Thanks for consigning with PBG."]
   ].map(([grader,position,code,label,customer_text]) => ({grader,position,code,label,customer_text,
-    notify_customer: !["psa_order_prep","psa_qa1","psa_qa2","cgc_received","cgc_qc","bgs_invoiced","sgc_received","sgc_qc","tag_received","tag_qa"].includes(code)}));
+    notify_customer: !["psa_order_prep","psa_qa1","psa_qa2","cgc_received","cgc_qc","bgs_invoiced","sgc_received","sgc_qc","tag_received","tag_qa","auction_received"].includes(code)}));
 
   const GRADER_NAMES = { BGS: "Beckett" };
   const graderName = g => GRADER_NAMES[g] || g;
@@ -62,10 +67,11 @@
       const own = by(order.grader);
       list = list.concat(own.length ? own : by("*generic"));
     }
-    list = list.concat(by("*post"));
-    const name = graderName(order.grader);
-    return list.map(r => ({ ...r, label: r.label.replaceAll("{grader}", name), customer_text: r.customer_text.replaceAll("{grader}", name),
-      phase: r.grader === "*pre" || r.grader === "*post" ? "shop" : r.grader === "*partner" ? "partner" : r.grader === "*ship" ? "ship" : "grader" }));
+    list = list.concat(by(order.auction_house ? "*auction" : "*post"));   // auction orders go to the auction house instead of back to the customer
+    const name = graderName(order.grader), house = order.auction_house && order.auction_house !== "Best fit" ? order.auction_house : "the auction house";
+    const fill = t => t.replaceAll("{grader}", name).replaceAll("{house}", house);
+    return list.map(r => ({ ...r, label: fill(r.label), customer_text: fill(r.customer_text),
+      phase: r.grader === "*pre" || r.grader === "*post" ? "shop" : r.grader === "*partner" ? "partner" : r.grader === "*ship" ? "ship" : r.grader === "*auction" ? "auction" : "grader" }));
   }
 
   /* ---------- helpers ---------- */
@@ -86,7 +92,9 @@
       grader: s.grader, tier: s.tier || null, grade_each: t.gradeEach || 0, grader_fee_each: t.fee || 0,
       graded_count: t.gradedCards || 0, eval_count: t.evalCount || 0, prep_count: t.prepCount || 0, gem_count: t.gemCount || 0, gem_fees: round(t.gems), mag_count: t.magCount || 0, mag_fees: round(t.mags),
       grader_fees: round(t.graderFees), pbg_share: round(t.pbgShare), rr_share: round(t.rrShare),
-      has_prep: s.cards.some(c => c.clean || c.eval), rr_code: s.rrCode || null, if_low_grade: s.cards.some(c => c.eval) ? s.ifLowGrade : null,
+      has_prep: s.cards.some(c => c.clean || c.eval),
+      auction_house: s.auction ? s.auction.house : null, auction_mode: s.auction ? s.auction.mode : null,
+      payout_method: s.auction ? s.auction.payout : null, payout_details: s.auction ? (s.auction.payoutDetails || null) : null, rr_code: s.rrCode || null, if_low_grade: s.cards.some(c => c.eval) ? s.ifLowGrade : null,
       subtotal: round(t.subtotal), tax: round(t.tax), total: round(t.total),
       payment_when: s.payment.when, payment_method: s.payment.method,
       signed_name: s.signedName, received_by: s.staff, pickup_policy_ack: !!s.agreedPickup
@@ -95,6 +103,7 @@
   function cardRowFromSub(c, i){
     return { position: i+1, category: c.category, name: c.name, year: c.year || null, set_name: c.set || null, card_number: c.number || null,
       variant: c.variant || null, declared_value: +c.value || 0, clean: !!c.clean, eval: !!c.eval, repair: !!c.repair, gem: !!c.gem, gem_fee: +c.gemFee || 0, mag_case: !!c.mag,
+      grade: c.slabGrade || null, cert_number: c.cert || null,
       repair_note: c.repair ? [({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || "Repair", c.repairNote].filter(Boolean).join(": ") : null };
   }
   const round = n => Math.round((+n || 0) * 100) / 100;
@@ -179,10 +188,16 @@
     },
     async listOrders(){
       const { data, error } = await sb.from("orders")
-        .select("id,ticket,public_token,customer_first,customer_last,phone,email,grader,tier,has_prep,current_stage,created_at,updated_at,total,payment_when,grader_order_no,ready_at,final_notice_at,pickup_deadline,abandoned_at,cards(count)")
+        .select("id,ticket,public_token,customer_first,customer_last,phone,email,grader,tier,has_prep,current_stage,created_at,updated_at,total,payment_when,grader_order_no,ready_at,final_notice_at,pickup_deadline,abandoned_at,auction_house,auction_mode,cards(count)")
         .order("created_at", { ascending: false }).limit(1000);
       if(error) throw error;
       return data.map(o => ({ ...o, card_count: o.cards && o.cards[0] ? o.cards[0].count : 0 }));
+    },
+    async auctionOrders(){
+      const { data, error } = await sb.from("orders")
+        .select("id,ticket,customer_first,customer_last,phone,grader,tier,current_stage,created_at,updated_at,auction_house,auction_mode,payout_method,payout_details,auction_paid_at,has_prep,cards(name,year,set_name,grade,cert_number,declared_value,hammer_price,auction_lot_url)")
+        .not("auction_house", "is", null).order("created_at", { ascending: false }).limit(1000);
+      if(error) throw new Error(error.message); return data;
     },
     async getOrder(id){
       const { data, error } = await sb.from("orders").select("*, cards(*), stage_events(*)").eq("id", id).single();
@@ -228,7 +243,7 @@
   };
 
   /* =================== DEMO (sample data in this browser) =================== */
-  const DKEY = "pbg.demo.v14";
+  const DKEY = "pbg.demo.v15";
   const ph = (bg, fg, label) => "data:image/svg+xml;utf8," + encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 350"><rect width="250" height="350" rx="14" fill="${fg}"/><rect x="12" y="12" width="226" height="326" rx="8" fill="${bg}"/><circle cx="125" cy="150" r="60" fill="${fg}" opacity=".85"/><rect x="28" y="262" width="194" height="44" rx="6" fill="#fff"/><text x="125" y="291" font-family="Arial" font-weight="700" font-size="18" text-anchor="middle" fill="#111">${label}</text></svg>`);
   function seed(){
@@ -263,7 +278,16 @@
       mk({ ticket: "PBG-260712-Z4C", customer_first: "Tyler", customer_last: "Nguyen", phone: "936-555-0188", contact_pref: "Text", email: "tyler@example.com", mailing_address: "1418 Example Ln, Spring, TX 77386", pickup_policy_ack: true, grader: "PSA", tier: "Value", grade_each: 25, has_prep: false, total: 75, payment_when: "pickup", created_at: d(120), received_by: "Jordan", grader_order_no: "PSA 23991020" },
         [{ category: "Sports", name: "Victor Wembanyama", year: "2023", set_name: "Prizm", card_number: "136", variant: "Base", declared_value: 60, grade: "PSA 9", front_path: ph("#1B1B1B","#C0C0C0","Wemby Prizm") },
          { category: "Sports", name: "C.J. Stroud", year: "2023", set_name: "Donruss Optic", card_number: "203", variant: "Rated Rookie", declared_value: 40, grade: "PSA 10", front_path: ph("#03202F","#A71930","Stroud RR") }],
-        [["checked_in", d(120)], ["shipped_to_grader", d(118)], ["psa_arrived", d(110)], ["psa_grading", d(90)], ["psa_shipped", d(70)], ["ready", d(64), "Grades are in. Come by any day 11 to 7."]])
+        [["checked_in", d(120)], ["shipped_to_grader", d(118)], ["psa_arrived", d(110)], ["psa_grading", d(90)], ["psa_shipped", d(70)], ["ready", d(64), "Grades are in. Come by any day 11 to 7."]]),
+      mk({ ticket: "PBG-261015-A9G", customer_first: "Kayla", customer_last: "Brooks", phone: "281-555-0161", contact_pref: "Text", email: "kayla@example.com", grader: "None", tier: null, grade_each: 0, has_prep: false, total: 0, payment_when: "dropoff", payment_method: "None due", created_at: d(25), received_by: "Jordan",
+          auction_house: "Goldin", auction_mode: "standalone", payout_method: "Zelle", payout_details: "281-555-0161" },
+        [{ category: "Sports", name: "Patrick Mahomes", year: "2017", set_name: "Prizm", card_number: "269", variant: "Rookie", declared_value: 2400, grade: "PSA 10", cert_number: "71234567", hammer_price: 2650, front_path: ph("#E31837","#FFB612","Mahomes RC") },
+         { category: "Pokémon", name: "Umbreon VMAX", year: "2021", set_name: "Evolving Skies", card_number: "215", variant: "Alt Art", declared_value: 1500, grade: "CGC 9.5", cert_number: "4210098765", hammer_price: 1320, front_path: ph("#1B1B3A","#F2D16B","Umbreon VMAX") }],
+        [["checked_in", d(25)], ["auction_sent", d(23)], ["auction_received", d(18)], ["auction_live", d(9)], ["auction_sold", d(2), "Both cards sold. Goldin pays out in about two weeks, then we pay you."]]),
+      mk({ ticket: "PBG-261101-F2X", customer_first: "Chris", customer_last: "Vega", phone: "713-555-0133", contact_pref: "Text", grader: "PSA", tier: "Value", grade_each: 25, has_prep: true, total: 54, payment_when: "dropoff", created_at: d(8), received_by: "Alex",
+          auction_house: "Fanatics Collect", auction_mode: "after_grading", payout_method: "Check", payout_details: "Chris Vega" },
+        [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", variant: "Special Illustration Rare", declared_value: 300, clean: true, front_path: ph("#B3121A","#F5C518","Charizard ex") }],
+        [["checked_in", d(8)], ["at_partner", d(7)], ["prep_done", d(4)], ["shipped_to_grader", d(3)]])
     ];
   }
   // demo orders: price them with the current rules (fee + $20 split PBG $12 / RR $8; full eval $17, PBG $2; prep $7, PBG $2)
@@ -332,17 +356,19 @@
     async submitOrder(s){
       const st = dget(); if(st.orders.some(o => o.ticket === s.ticket)) return {};
       const o = { id: uuid(), ...orderRowFromSub(s), current_stage: "checked_in", updated_at: s.createdAt, grader_order_no: null, outbound_tracking: null, return_tracking: null, internal_notes: null, signature_path: null,
-        cards: s.cards.map((c,i) => ({ id: uuid(), ...cardRowFromSub(c,i), front_path: c.thumb || null, back_path: null, eval_result: null, repair_quote: null, grade: null, cert_number: null, card_status: null })),
+        cards: s.cards.map((c,i) => ({ id: uuid(), ...cardRowFromSub(c,i), front_path: c.thumb || null, back_path: null, eval_result: null, repair_quote: null, card_status: null, hammer_price: null, auction_lot_url: null })),
         stage_events: [{ id: uuid(), stage: "checked_in", note: "Cards accepted at PBG by " + s.staff, created_at: s.createdAt, visible_to_customer: true, created_by_name: (st.staff && st.staff.name) || "iPad" }] };
       st.orders.unshift(o); dsave(st); return { id: o.id };
     },
     async listOrders(){ const st = dget(); return clone(st.orders.filter(o => st.staff && (st.staff.role !== "partner" || o.has_prep)).map(o => ({ ...o, card_count: o.cards.length }))); },
+    async auctionOrders(){ const st = dget(); if(!st.staff || !["owner","staff"].includes(st.staff.role)) throw new Error("Only PBG staff can see auctions"); return clone(st.orders.filter(o => o.auction_house)); },
     async getOrder(id){ const o = dget().orders.find(x => x.id === id); if(!o) throw new Error("Order not found"); return clone(o); },
     async setStage(id, code, note, visible, email){
       const st = dget(), o = st.orders.find(x => x.id === id);
       if(st.staff && st.staff.role === "partner" && !["at_partner","prep_done"].includes(code)) throw new Error("Partners can only set prep stages");
       o.current_stage = code; o.updated_at = new Date().toISOString();
       if(code === "ready" && !o.ready_at) o.ready_at = o.updated_at;
+      if(code === "auction_paid" && !o.auction_paid_at) o.auction_paid_at = o.updated_at;
       const row = DEFAULT_STAGES.find(r => r.code === code);
       o.stage_events.push({ id: uuid(), stage: code, note: note || null, created_at: o.updated_at, visible_to_customer: visible !== false,
         email_customer: visible !== false && !!o.email && (email === undefined ? (row ? row.notify_customer !== false : true) : !!email), created_by_name: (st.staff && st.staff.name) || "Staff" });
@@ -353,7 +379,7 @@
     async getStatus(token){
       const o = dget().orders.find(x => x.public_token === token); if(!o) return null;
       return { ticket: o.ticket, first_name: o.customer_first, created_at: o.created_at, grader: o.grader, tier: o.tier, has_prep: o.has_prep, current_stage: o.current_stage,
-        total: o.total, payment_when: o.payment_when, return_tracking: o.return_tracking, cards: clone(o.cards),
+        total: o.total, payment_when: o.payment_when, return_tracking: o.return_tracking, auction_house: o.auction_house || null, auction_mode: o.auction_mode || null, cards: clone(o.cards),
         events: o.stage_events.filter(e => e.visible_to_customer).map(e => ({ stage: e.stage, note: e.note, at: e.created_at })) };
     },
     photoUrl(path){ return path || null; },
@@ -404,6 +430,7 @@
     getStatus: (...a) => impl.getStatus(...a),
     photoUrl: (...a) => impl.photoUrl(...a),
     payouts: (...a) => impl.payouts(...a),
+    auctionOrders: (...a) => impl.auctionOrders(...a),
     getPricing: (...a) => impl.getPricing(...a),
     linkRestoredRarity: (...a) => impl.linkRestoredRarity(...a),
     savePricing: (...a) => impl.savePricing(...a),
