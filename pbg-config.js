@@ -2,8 +2,8 @@
    Fill these in after creating the Supabase project (see SETUP.md).
    Leave supabaseUrl empty to run in demo mode with sample data. */
 window.PBG_CONFIG = {
-  supabaseUrl: "",          // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "",      // Project Settings > API > anon public key
+  supabaseUrl: "https://zsvocwwtefwdekbfiwxc.supabase.co",          // e.g. "https://abcdefgh.supabase.co"
+  supabaseAnonKey: "sb_publishable_7DnhftvXLu-2YncmXVrllw_YcAocysQ",   // Project Settings > API Keys > publishable key (safe to be public)
   statusUrl: "https://pbgcardshtx.com/status.html",  // public customer status page
   staffUrl: "https://pbgcardshtx.com/staff/",         // staff portal (linked from the iPad staff menu)
   staffIdleMinutes: 30,     // the staff portal signs out after this long without use

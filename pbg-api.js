@@ -136,7 +136,7 @@
     async staffAuth(action, body = {}, withSession = false){
       const headers = { apikey: cfg.supabaseAnonKey, "Content-Type": "application/json" };
       if(withSession){ const { data: { session } } = await sb.auth.getSession(); if(!session) throw new Error("Sign in again."); headers.Authorization = "Bearer " + session.access_token; }
-      else headers.Authorization = "Bearer " + cfg.supabaseAnonKey;
+      else if(/^eyJ/.test(cfg.supabaseAnonKey)) headers.Authorization = "Bearer " + cfg.supabaseAnonKey;   // new sb_publishable_ keys go in apikey only
       let r;
       try{ r = await fetch(cfg.supabaseUrl.replace(/\/$/, "") + "/functions/v1/staff-auth", { method: "POST", headers, body: JSON.stringify({ action, ...body }) }); }
       catch(e){ throw new Error("Can't reach the PBG sign-in service. Check the internet connection."); }

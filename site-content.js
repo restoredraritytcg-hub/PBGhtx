@@ -207,7 +207,7 @@
     try{ cached = JSON.parse(localStorage.getItem(CACHE) || "null"); }catch(e){}
     apply(cached || {});
     fetch(cfg.supabaseUrl.replace(/\/$/, "") + "/rest/v1/rpc/site_get", {
-      method: "POST", headers: { apikey: cfg.supabaseAnonKey, Authorization: "Bearer " + cfg.supabaseAnonKey, "Content-Type": "application/json" }, body: "{}"
+      method: "POST", headers: Object.assign({ apikey: cfg.supabaseAnonKey, "Content-Type": "application/json" }, /^eyJ/.test(cfg.supabaseAnonKey) ? { Authorization: "Bearer " + cfg.supabaseAnonKey } : {}), body: "{}"
     }).then(r => r.ok ? r.json() : null).then(c => {
       if(!c || typeof c !== "object") return;
       const fresh = JSON.stringify(c);
