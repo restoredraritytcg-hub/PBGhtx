@@ -5,11 +5,11 @@
 // Secrets (Supabase > Edge Functions > Secrets, or `supabase secrets set ...`):
 //   RESEND_API_KEY       from resend.com
 //   PBG_NOTIFY_SECRET    any long random string; also stored in app_settings.notify_secret
-//   FROM_EMAIL           e.g. "PBG Cards & Collectibles <orders@yourpbgdomain.com>" (domain verified in Resend)
+//   FROM_EMAIL           e.g. "PBG Cards & Collectibles <orders@pbgcardshtx.com>" (domain verified in Resend)
 //   REPLY_TO             e.g. the shop's Gmail, where customer replies should go
 //   SHOP_EMAIL           gets a copy of every new order (comma-separate for several)
 //   PARTNER_EMAIL        Restored Rarity, gets orders with cleaning / evaluation / repair
-//   STATUS_URL           public status page, e.g. https://yourpbgdomain.com/status.html
+//   STATUS_URL           public status page, e.g. https://pbgcardshtx.com/status.html
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided automatically.
 //
 // Deploy:  supabase functions deploy pbg-notify --no-verify-jwt
@@ -59,6 +59,36 @@ function layout(title: string, body: string) {
 }
 const button = (url: string, label: string) =>
   `<p style="margin:22px 0"><a href="${h(url)}" style="background:#E31B23;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:6px;display:inline-block">${h(label)}</a></p>`;
+
+// The customer's full receipt: what they're paying for, line by line, plus pickup and auction terms.
+function receipt(order: any, link: string, grading: string, rules: any = {}) {
+  const evalPrice = +rules.evalPrice || 17, prepPrice = +rules.prepPrice || 7;
+  const n = (x: any) => +x || 0, row = (l: string, v: string, b = false) =>
+    `<tr><td style="padding:6px 0;${b ? "font-weight:700;border-top:2px solid #141414;padding-top:10px" : ""}">${l}</td><td align="right" style="padding:6px 0;${b ? "font-weight:700;border-top:2px solid #141414;padding-top:10px" : ""}">${v}</td></tr>`;
+  const gc = n(order.graded_count), house = order.auction_house === "Best fit" ? "the best-fit auction house" : order.auction_house;
+  const when = new Date(order.created_at).toLocaleString("en-US", { timeZone: "America/Chicago", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  const lines = [
+    gc ? row(`${h(grading)} grading &times; ${gc}`, money(n(order.grade_each) * gc)) : "",
+    n(order.eval_count) ? row(`Full evaluation with magnification &times; ${n(order.eval_count)}`, money(evalPrice * n(order.eval_count))) : "",
+    n(order.prep_count) ? row(`Prep &times; ${n(order.prep_count)}`, money(prepPrice * n(order.prep_count))) : "",
+    n(order.gem_fees) ? row(`Gem service with magnetic case &times; ${n(order.gem_count)}`, money(order.gem_fees)) : "",
+    n(order.mag_fees) ? row(`Matching magnetic slab case &times; ${n(order.mag_count)} (handed over at pickup)`, money(order.mag_fees)) : "",
+    order.cards.some((c: any) => c.repair) ? row(`Repairs by Restored Rarity`, "Quoted separately") : "",
+    order.auction_house ? row(`Auction consignment to ${h(house)}`, "No seller fee") : "",
+    n(order.tax) ? row("Tax", money(order.tax)) : "",
+    row(n(order.total) ? (order.payment_when === "pickup" ? "Total due at pickup" : `Total paid${order.payment_method ? " (" + h(order.payment_method) + ")" : ""}`) : "Total", money(order.total), true),
+  ].join("");
+  return `
+    <p style="margin:0 0 4px;font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.06em">Ticket</p>
+    <p style="margin:0 0 16px;font-size:26px;font-weight:900">${h(order.ticket)}</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#444">Checked in ${h(when)}${order.received_by ? ` &middot; accepted by ${h(order.received_by)}` : ""}${order.signed_name ? ` &middot; signed by ${h(order.signed_name)}` : ""}</p>
+    ${button(link, "Open your customer portal")}
+    <p style="font-size:13px;color:#555;margin:-6px 0 18px">Follow every stage of your order here, any time: <a href="${link}" style="color:#E31B23;word-break:break-all">${link}</a></p>
+    ${cardTable(order.cards, !!order.auction_mode && order.auction_mode === "standalone")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;margin-top:18px">${lines}</table>
+    ${order.auction_house ? `<p style="font-size:14px;background:#eef3fa;padding:12px 14px;border-radius:8px;margin-top:18px"><b>Auction:</b> your cards go to ${h(house)}${order.auction_mode === "after_grading" ? " as soon as they're graded" : ""}. You receive <b>100% of the hammer price</b>; the buyer's premium is paid by the buyer. We pay you by ${h(order.payout_method ?? "your chosen method")}${order.payout_details ? " (" + h(order.payout_details) + ")" : ""} once ${h(house)} pays us.</p>` : ""}
+    <p style="font-size:13px;color:#555;margin-top:18px">Pickup: bring your ticket number and a photo ID. Storage is free for 30 days after we tell you your cards are ready, then $1 per card per day. Unclaimed cards are handled as described in section 10 of the terms you signed.</p>`;
+}
 
 function cardTable(cards: any[], showGrades = false) {
   return `<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin-top:8px">
@@ -111,19 +141,16 @@ Deno.serve(async (req) => {
   const list = stageList(order, (rows ?? []) as Stage[]);
   const stage = list.find((s) => s.code === ev.stage) ?? { label: ev.stage, customer_text: "" };
   const idx = list.findIndex((s) => s.code === ev.stage);
-  const link = `${env("STATUS_URL").replace(/#.*$/, "")}#${order.public_token}`;
-  const grading = order.grader === "None" ? "prep only (no grading)" : `${gname(order.grader)} ${order.tier ?? ""}`.trim();
+  const link = `${env("STATUS_URL", "https://pbgcardshtx.com/status.html").replace(/#.*$/, "")}#${order.public_token}`;
+  const grading = order.grader === "None" ? (order.auction_mode === "standalone" ? "auction only" : "prep only (no grading)") : `${gname(order.grader)} ${order.tier ?? ""}`.trim();
   const note = ev.note && ev.stage !== "checked_in" ? `<p style="background:#f6f6f6;border-left:4px solid #E31B23;padding:12px 14px;margin:16px 0">${h(ev.note)}</p>` : "";
 
   if (ev.stage === "checked_in") {
     // Customer receipt
     if (order.email && ev.email_customer) {
-      await send("receipt", order.email, `Your PBG ticket ${order.ticket}`, layout(`Thanks, ${order.customer_first}. We've got your cards.`, `
-        <p>Your ticket number is <b style="font-size:18px">${h(order.ticket)}</b>. Keep this email for pickup.</p>
-        <p>${order.cards.length} card${order.cards.length === 1 ? "" : "s"} checked in for ${h(grading)}. Total ${money(order.total)}${order.payment_when === "pickup" ? ", due at pickup" : ", paid"}.</p>
-        ${button(link, "Track your order")}
-        <p style="font-size:14px;color:#555">We'll email you as your cards move through each stage.</p>
-        ${cardTable(order.cards)}
+      await send("receipt", order.email, `Your PBG receipt: ticket ${order.ticket}`, layout(`Thanks, ${order.customer_first}. Here's your receipt.`, `
+        ${receipt(order, link, grading, ((await db.from("pricing").select("rules").eq("id", 1).maybeSingle()).data ?? {}).rules ?? {})}
+        <p style="font-size:14px;color:#555">We'll email you as your cards move through each stage. Keep this email for pickup.</p>
         ${order.has_prep ? `<p style="font-size:13px;color:#555;margin-top:16px">Full evaluations, prep and repairs are done by restoration professionals at our partner, Restored Rarity TCG.</p>` : ""}`), order, ev.id);
     }
     // Shop copy

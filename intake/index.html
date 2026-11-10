@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261109e"></script>
-<script src="../pbg-api.js?v=20261109e"></script>
-<script src="cardsearch.js?v=20261109e"></script>
-<script src="rr-push.js?v=20261109e"></script>
+<script src="../pbg-config.js?v=20261109f"></script>
+<script src="../pbg-api.js?v=20261109f"></script>
+<script src="cardsearch.js?v=20261109f"></script>
+<script src="rr-push.js?v=20261109f"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -915,6 +915,7 @@ function done(){
     <p>Thanks, ${esc(c.first)}. Your ticket number is</p>
     <div class="num">${esc(sub.ticket)}</div>
     <p>${t.count} card${t.count===1?"":"s"} ${sub.auction && sub.auction.mode === "standalone" ? `checked in for auction at ${esc(houseName(sub.auction.house))}` : sub.grader==="None" ? (sub.cards.every(x => x.repair && !x.clean && !x.eval) ? "checked in for a Restored Rarity repair" : "checked in for prep") : `for ${esc(sub.grader)} ${esc(sub.tier)}`}.${t.total > 0 ? ` Total ${money(t.total)}${sub.payment.when==="pickup" ? ", due at pickup" : ", paid"}.` : " Nothing is due at PBG."}</p>
+    ${c.email ? `<p style="margin-top:6px">A copy of this receipt, with a link to your customer portal, is on its way to <b>${esc(c.email)}</b>.</p>` : ""}
     <p style="margin-top:6px">${sub.auction ? `Your cards go to ${esc(houseName(sub.auction.house))}${sub.auction.mode === "after_grading" ? " after grading" : ""}. You get 100% of the hammer price, paid by ${esc(sub.auction.payout === "Zelle" ? "Zelle" : sub.auction.payout.toLowerCase())} once the auction house pays us.` : `We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.`}</p>
     ${sub.cards.some(x => x.repair) ? `<p class="notice" style="margin-top:16px;text-align:left">Your repair request is going to Restored Rarity. You'll get a confirmation from them with your own Restored Rarity link, and they'll quote the repair before doing any work.</p>` : ""}
     <div class="qr"><div class="code" id="qr"></div><p><b>Track your order</b><br>Scan this code to see your cards move through each grading stage. The link is printed on your receipt too.</p></div>
