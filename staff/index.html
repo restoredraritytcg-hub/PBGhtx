@@ -439,7 +439,7 @@ async function detail(id){
         <h2>Update stage</h2>
         ${s.next && canSet(s.next) ? `<div class="next"><button class="btn btn-red btn-lg" id="advance">Move to: ${esc(s.next.label)}</button></div>` : ""}
         <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px;align-items:end">
-          <label class="f">Or set a specific stage<select class="t" id="pick">${s.list.filter(canSet).map(st => `<option value="${st.code}" ${st.code===o.current_stage?"selected":""}>${esc(st.label)}</option>`).join("")}</select></label>
+          <label class="f">Or set a specific stage<select class="t" id="pick">${s.list.filter(canSet).map(st => `<option value="${st.code}" ${st.code===o.current_stage?"selected":""}>${esc(st.label)}</option>`).join("")}${o.auction_house && !partner ? (s.list.some(x => x.code === "ready") ? PBG.stageList({ ...o, current_stage: "auction_sent" }, stages).filter(x => x.phase === "auction").map(st => `<option value="${st.code}">${esc(st.label)} (back to auction)</option>`).join("") : `<option value="ready">Ready for pickup (card declined, return to customer)</option>`) : ""}</select></label>
           <button class="btn btn-line" id="setPick">Set stage</button>
         </div>
         <label class="f" style="margin-top:12px">Note with this update (optional)<textarea class="t" id="note" placeholder="e.g. Grades are in. Come by any day 11 to 7."></textarea></label>
@@ -520,7 +520,7 @@ async function detail(id){
     </div></div></div>`;
 
   const setStage = async (code, btn) => {
-    const st = s.list.find(x => x.code === code);
+    const st = s.list.find(x => x.code === code) || { label: $("#pick").selectedOptions[0] ? $("#pick").selectedOptions[0].textContent : code };
     btn.disabled = true;
     const mail = $("#mail"), email = mail && !mail.disabled ? mail.checked && $("#vis").checked : false;
     try{ await PBG.setStage(o.id, code, $("#note").value.trim(), $("#vis").checked, email); toast("Moved to " + st.label + (email ? ". Customer will be emailed." : "")); detail(o.id); }
@@ -534,7 +534,7 @@ async function detail(id){
   $("#setPick").onclick = async () => {
     const code = $("#pick").value; if(code === o.current_stage){ toast("The order is already at that stage."); return; }
     const target = s.list.findIndex(x => x.code === code);
-    if(target < s.idx && !await confirmBox("Move this order back?", `It will go back to "${s.list[target].label}". The customer will see the change.`, "Move back")) return;
+    if(target >= 0 && target < s.idx && !await confirmBox("Move this order back?", `It will go back to "${s.list[target].label}". The customer will see the change.`, "Move back")) return;
     setStage(code, $("#setPick"));
   };
   document.querySelectorAll("[data-save]").forEach(b => b.onclick = async () => {

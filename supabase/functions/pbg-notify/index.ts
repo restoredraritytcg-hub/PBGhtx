@@ -37,7 +37,8 @@ function stageList(order: any, rows: Stage[]) {
     const own = by(order.grader);
     list = list.concat(own.length ? own : by("*generic"));
   }
-  list = list.concat(by(order.auction_house ? "*auction" : "*post"));
+  const declined = ["ready", "picked_up"].includes(order.current_stage);
+  list = list.concat(by(order.auction_house && !declined ? "*auction" : "*post"));
   const n = gname(order.grader), house = order.auction_house && order.auction_house !== "Best fit" ? order.auction_house : "the auction house";
   const fill = (t: string) => t.replaceAll("{grader}", n).replaceAll("{house}", house);
   return list.map((r) => ({ ...r, label: fill(r.label), customer_text: fill(r.customer_text) }));

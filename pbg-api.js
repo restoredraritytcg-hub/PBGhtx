@@ -67,7 +67,9 @@
       const own = by(order.grader);
       list = list.concat(own.length ? own : by("*generic"));
     }
-    list = list.concat(by(order.auction_house ? "*auction" : "*post"));   // auction orders go to the auction house instead of back to the customer
+    // auction orders go to the auction house instead of back to the customer (unless a declined card was sent back for pickup)
+    const declined = ["ready","picked_up"].includes(order.current_stage);
+    list = list.concat(by(order.auction_house && !declined ? "*auction" : "*post"));
     const name = graderName(order.grader), house = order.auction_house && order.auction_house !== "Best fit" ? order.auction_house : "the auction house";
     const fill = t => t.replaceAll("{grader}", name).replaceAll("{house}", house);
     return list.map(r => ({ ...r, label: fill(r.label), customer_text: fill(r.customer_text),
