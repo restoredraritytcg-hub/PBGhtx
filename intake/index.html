@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261109d"></script>
-<script src="../pbg-api.js?v=20261109d"></script>
-<script src="cardsearch.js?v=20261109d"></script>
-<script src="rr-push.js?v=20261109d"></script>
+<script src="../pbg-config.js?v=20261109e"></script>
+<script src="../pbg-api.js?v=20261109e"></script>
+<script src="cardsearch.js?v=20261109e"></script>
+<script src="rr-push.js?v=20261109e"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -369,7 +369,7 @@ const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = n => "$" + (Math.round(n*100)/100).toFixed(2);
 const uid = () => Math.random().toString(36).slice(2,10);
-function toast(msg){ const t = document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
+function toast(msg, ms){ const t = document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), ms || 2600); }
 function fmtPhone(v){ const d = v.replace(/\D/g,"").slice(0,10); if(d.length<4) return d; if(d.length<7) return `${d.slice(0,3)}-${d.slice(3)}`; return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`; }
 function newTicket(){
   const n = new Date(), p = x => String(x).padStart(2,"0");
@@ -423,6 +423,24 @@ function blankSub(){
 }
 function graderObj(){ return settings.graders.find(g => g.name === sub.grader) || null; }
 function tierObj(){ const g = graderObj(); return g ? g.tiers.find(t => t.name === sub.tier) || null : null; }
+// A ticket's level has to cover its highest declared value. If a card is over the chosen level's limit,
+// move the ticket up to the cheapest open level that covers it. Returns a message when it moved, or a warning when no level covers it.
+function autoTier(){
+  const g = graderObj(), cur = tierObj(); if(!g || !cur || !sub.cards.length) return null;
+  const top = Math.max(...sub.cards.map(c => +c.value || 0));
+  const fits = t => !t.max || +t.max >= top;
+  if(fits(cur)) return null;
+  const open = g.tiers.filter(t => t.active !== false), curPrice = tierPrice(cur);
+  const next = open.filter(t => fits(t) && tierPrice(t) >= curPrice).sort((a, b) => tierPrice(a) - tierPrice(b))[0];
+  const big = sub.cards.find(c => +c.value === top);
+  if(!next){   // nothing covers it: go to the highest open level and let the shop confirm with the grader
+    const highest = open.slice().sort((a, b) => (+b.max || Infinity) - (+a.max || Infinity) || tierPrice(b) - tierPrice(a))[0];
+    const from = sub.tier; if(highest && tierPrice(highest) > curPrice) sub.tier = highest.name;
+    return { moved: sub.tier !== from, text: `${sub.tier !== from ? `Moved up from ${from} to ${sub.tier}. ` : ""}${big ? big.name : "A card"} is declared at ${money(top).replace(".00","")}, above every open ${g.name} level, so the shop will confirm the right service with ${g.name} before submitting.` };
+  }
+  const from = sub.tier; sub.tier = next.name;
+  return { moved: true, text: `Moved up from ${from} to ${next.name} (${money(tierPrice(next))} per card) because ${big ? big.name : "a card"} is declared at ${money(top).replace(".00","")}, over the ${from} limit of ${money(cur.max).replace(".00","")}.` };
+}
 // Gem service: graded cards declared above the threshold (+fee, magnetic case included)
 function gemFeeFor(value){
   let fee = 0; for(const t of (settings.gemTiers || [])) if((+value || 0) > +t.over) fee = Math.max(fee, +t.fee || 0);
@@ -574,7 +592,7 @@ function grading(){
     if(v === "Auction"){ sub.grader = "None"; sub.tier = null; sub.auction = { mode: "standalone", house: A ? A.house : null, payout: A ? A.payout : "Zelle", payoutDetails: A ? A.payoutDetails : "" }; sub.cards.forEach(c => { c.clean = c.eval = c.repair = c.mag = false; }); }
     else { if(sub.grader !== v || standalone){ sub.grader = v; sub.tier = null; } if(v === "None" || standalone) sub.auction = null; if(standalone) sub.payment = { when: "dropoff", method: "Card" }; }
     render(); };
-  const tiers = $("#tiers"); if(tiers) tiers.onclick = e => { const b = e.target.closest("[data-t]"); if(!b || b.disabled) return; sub.tier = b.dataset.t; render(); };
+  const tiers = $("#tiers"); if(tiers) tiers.onclick = e => { const b = e.target.closest("[data-t]"); if(!b || b.disabled) return; sub.tier = b.dataset.t; sub.tierNote = null; render(); };
   const after = $("#after"); if(after) after.onclick = e => { const b = e.target.closest("[data-k]"); if(!b) return;
     sub.auction = b.dataset.k === "auction" ? (sub.auction || { mode: "after_grading", house: null, payout: "Zelle", payoutDetails: "" }) : null;
     if(sub.auction) sub.auction.mode = "after_grading"; render(); };
@@ -582,7 +600,7 @@ function grading(){
   const ready = (standalone || sub.grader === "None" || (sub.grader && sub.tier)) && (!sub.auction || sub.auction.house);
   setFoot(`<button class="btn btn-ghost" id="back">Back</button><span class="sum">${sub.auction && !sub.auction.house ? "Pick an auction house" : ""}</span><button class="btn btn-red" id="next" ${ready?"":"disabled"}>Next: add cards</button>`);
   $("#back").onclick = () => go("customer");
-  $("#next").onclick = () => go("cards");
+  $("#next").onclick = () => { const lvl = autoTier(); sub.tierNote = lvl ? lvl.text : null; go("cards"); };
 }
 
 function cards(){
@@ -603,6 +621,7 @@ function cards(){
     </div>`; }).join("");
   $("#app").innerHTML = `<main>
     <div class="screen-head"><h2>Add your cards</h2><p>${standalone ? `Add each graded slab going to ${esc(houseName(sub.auction.house))}.` : noGrade ? "Add each card you want prepped." : `Each card goes to ${esc(sub.grader)} ${esc(sub.tier)}. Add a full evaluation or prep to any card.`}</p></div>
+    ${sub.tierNote && !standalone && !noGrade ? `<div class="notice" style="margin-bottom:16px"><b>Service level updated.</b> ${esc(sub.tierNote)}</div>` : ""}
     ${sub.cards.length > 1 && !standalone ? `<div class="bulk"><span>All cards:</span>
       <button class="btn btn-line btn-sm" data-bulk="clean">${sub.cards.every(c=>c.clean) ? "Remove prep" : "Add prep"}</button>
       <button class="btn btn-line btn-sm" data-bulk="eval">${sub.cards.every(c=>c.eval) ? "Remove full evaluation" : "Add full evaluation"}</button>
@@ -697,7 +716,9 @@ function cardEditor(idx){
       if(standalone){ $("#slabGrade", m).classList.toggle("bad", !c.slabGrade); if(!c.slabGrade) errs.push("the grading company and grade on the slab"); }
       if(errs.length){ const e = $("#cerr", m); e.hidden = false; e.textContent = "Please enter " + errs.join(" and ") + "."; return; }
       if(isNew) sub.cards.push(c); else sub.cards[idx] = c;
+      const lvl = autoTier(); sub.tierNote = lvl ? lvl.text : sub.tierNote;
       close(); render();
+      if(lvl) toast(lvl.text, lvl.moved ? 6000 : 8000);
     };
     // Pokémon card-name suggestions (same list as restoredraritytcg.com); picking one fills year, set and number
     if(window.RRCardSearch) RRCardSearch.attach($("#name", m), {
