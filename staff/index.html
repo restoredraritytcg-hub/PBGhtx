@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#000000">
 <title>PBG Staff Portal</title>
-<link rel="icon" href="../assets/pbg-logo.png">
+<link rel="icon" href="../assets/pbg-logo.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -149,7 +149,7 @@ label.f .t{margin-top:4px}
 </head>
 <body>
 <header class="bar">
-  <img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX">
+  <img src="../assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX">
   <span class="t">Staff portal</span>
   <div class="r" id="barRight"></div>
 </header>
@@ -231,7 +231,7 @@ async function signInView(mode){
   if(!mode && PBG.mode === "live"){ try{ if(await PBG.needsSetup()) return setupView(); }catch(e){} }
   if(mode === "email") return emailSignInView();
   let pin = "";
-  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2 style="text-align:center">Enter your PIN</h2>
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX"><h2 style="text-align:center">Enter your PIN</h2>
     <p style="color:var(--steel);margin-top:6px;font-size:15px;text-align:center">Your own 6-digit staff PIN. Ask the owner if you don't have one.</p>
     <div class="pindots" id="dots">${"<i></i>".repeat(6)}</div>
     <div class="pinpad" id="pad">${[1,2,3,4,5,6,7,8,9,"",0,"⌫"].map(k => k === "" ? "<span></span>" : `<button type="button" data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("")}</div>
@@ -253,7 +253,7 @@ async function signInView(mode){
   $("#useEmail").onclick = () => { document.removeEventListener("keydown", onKey); signInView("email"); };
 }
 function emailSignInView(){
-  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Sign in with email</h2>
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX"><h2>Sign in with email</h2>
     <p style="color:var(--steel);margin-top:6px;font-size:15px">For accounts created in Supabase with an email and password.</p>
     <form class="grid" id="f"><label class="f">Email<input class="t" id="em" type="email" autocomplete="username" required></label>
     <label class="f">Password<input class="t" id="pw" type="password" autocomplete="current-password" required></label>
@@ -265,7 +265,7 @@ function emailSignInView(){
     catch(x){ er.hidden = false; er.textContent = x.message; b.disabled = false; b.textContent = "Sign in"; } };
 }
 function setupView(){
-  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png" alt="PBG Cards & Collectibles HTX"><h2>Set up the owner</h2>
+  $("#app").innerHTML = `<div class="signin"><img src="../assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX"><h2>Set up the owner</h2>
     <p style="color:var(--steel);margin-top:6px;font-size:15px">First time only. Create the owner's PIN. The owner then adds everyone else from the Team page.</p>
     <form class="grid" id="f"><label class="f">Your name<input class="t" id="nm" required></label>
     <label class="f">Choose a 6-digit PIN<input class="t" id="p1" inputmode="numeric" maxlength="6" type="password" autocomplete="new-password" required></label>
