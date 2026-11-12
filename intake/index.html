@@ -12,10 +12,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261110a"></script>
-<script src="../pbg-api.js?v=20261110a"></script>
-<script src="cardsearch.js?v=20261110a"></script>
-<script src="rr-push.js?v=20261110a"></script>
+<script src="../pbg-config.js?v=20261111a"></script>
+<script src="../pbg-api.js?v=20261111a"></script>
+<script src="cardsearch.js?v=20261111a"></script>
+<script src="rr-push.js?v=20261111a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -492,7 +492,7 @@ async function refreshPills(){
   const q = $("#queuePill");
   const who = await PBG.currentStaff().catch(() => null);
   if(PBG.mode === "live" && !who){ q.hidden = false; q.className = "pill warn"; q.textContent = "Not signed in"; }
-  else if(pend){ q.hidden = false; q.className = "pill"; q.textContent = `${pend} waiting to upload`; }
+  else if(pend){ q.hidden = false; q.className = "pill warn"; q.textContent = `${pend} waiting to upload`; }
   else q.hidden = true;
 }
 
@@ -942,7 +942,11 @@ function renderSyncBadge(){
   const el = $("#syncBadge"); if(!el) return;
   if(PBG.mode === "demo") el.innerHTML = `<span class="sync wait">Demo mode: saved on this iPad only. Connect Supabase to go live.</span>`;
   else if(sub.synced) el.innerHTML = `<span class="sync ok">Saved to the PBG order system</span>`;
-  else el.innerHTML = `<span class="sync wait">${sub.syncError ? "Saved on this iPad. Upload will retry automatically." : "Uploading…"}</span>`;
+  else if(sub.syncError){
+    el.innerHTML = `<span class="sync wait">Saved on this iPad, but it hasn't reached the PBG order system yet, so the tracking link won't work until it does.<br><small style="opacity:.8">Reason: ${esc(sub.syncError)}</small><br><button class="btn btn-line" id="retrySync" style="margin-top:10px;padding:8px 16px;font-size:15px">Try upload again</button></span>`;
+    $("#retrySync").onclick = async () => { $("#retrySync").textContent = "Uploading…"; await syncOne(sub); renderSyncBadge(); refreshPills(); };
+  }
+  else el.innerHTML = `<span class="sync wait">Uploading…</span>`;
 }
 
 async function printReceipt(s){
@@ -1006,6 +1010,16 @@ async function syncAll(){
   refreshPills();
 }
 window.addEventListener("online", syncAll);
+$("#queuePill").style.cursor = "pointer";
+$("#queuePill").onclick = async () => {
+  const list = (await DB.all()).filter(x => !x.synced || (x.cards.some(c => c.repair) && !x.rrSynced));
+  if(!list.length) return;
+  modal(`<h2>Waiting to upload</h2><p style="margin-top:8px;color:var(--steel)">These check-ins are saved on this iPad but haven't reached the PBG order system yet.</p>
+    <div style="margin-top:14px;display:grid;gap:10px">${list.map(x => `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left"><b>${esc(x.ticket)}</b> ${esc((x.customer && x.customer.first) || "")} ${esc((x.customer && x.customer.last) || "")}<br><small style="color:var(--steel)">${esc(x.syncError || x.rrError || "Not tried yet")}</small></div>`).join("")}</div>
+    <div class="acts"><button class="btn btn-line" data-n>Close</button><button class="btn btn-red" data-y>Upload now</button></div>`,
+    (m, close) => { $("[data-n]", m).onclick = close; $("[data-y]", m).onclick = async () => { $("[data-y]", m).textContent = "Uploading…"; syncing = false; await syncAll(); close(); refreshPills(); }; });
+};
+
 setInterval(syncAll, 2*60*1000);
 
 /* ---------------- staff area ---------------- */
