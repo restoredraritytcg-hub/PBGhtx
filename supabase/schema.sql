@@ -168,6 +168,11 @@ alter table public.orders add column if not exists mag_fees  numeric(10,2) defau
 -- Pickup / unclaimed-card policy (terms section 10)
 alter table public.orders add column if not exists mailing_address     text;
 alter table public.orders add column if not exists pickup_policy_ack   boolean not null default false;
+-- Signed terms: which version the customer signed, the full text, and their ownership/condition acknowledgement.
+alter table public.orders add column if not exists terms_version text;
+alter table public.orders add column if not exists terms_text    text;
+alter table public.orders add column if not exists signed_at     timestamptz;
+alter table public.orders add column if not exists ownership_ack boolean not null default false;
 alter table public.orders add column if not exists final_notice_at     timestamptz;  -- date the certified-mail final notice was sent
 alter table public.orders add column if not exists final_notice_tracking text;       -- USPS certified mail number
 alter table public.orders add column if not exists pickup_deadline     date;         -- deadline stated in the final notice
@@ -274,7 +279,7 @@ returns json language sql stable security definer set search_path = public as $$
     'ticket', o.ticket, 'first_name', o.customer_first, 'created_at', o.created_at,
     'grader', o.grader, 'tier', o.tier, 'has_prep', o.has_prep, 'current_stage', o.current_stage,
     'total', o.total, 'payment_when', o.payment_when, 'return_tracking', o.return_tracking,
-    'auction_house', o.auction_house, 'auction_mode', o.auction_mode,
+    'auction_house', o.auction_house, 'auction_mode', o.auction_mode, 'terms_version', o.terms_version,
     'cards', coalesce((select json_agg(json_build_object(
         'position', c.position, 'name', c.name, 'year', c.year, 'set_name', c.set_name, 'card_number', c.card_number,
         'variant', c.variant, 'category', c.category, 'clean', c.clean, 'eval', c.eval, 'repair', c.repair, 'gem', c.gem, 'gem_fee', c.gem_fee,

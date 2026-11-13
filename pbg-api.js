@@ -99,7 +99,8 @@
       payout_method: s.auction ? s.auction.payout : null, payout_details: s.auction ? (s.auction.payoutDetails || null) : null, rr_code: s.rrCode || null, if_low_grade: s.cards.some(c => c.eval) ? s.ifLowGrade : null,
       subtotal: round(t.subtotal), tax: round(t.tax), total: round(t.total),
       payment_when: s.payment.when, payment_method: s.payment.method,
-      signed_name: s.signedName, received_by: s.staff, pickup_policy_ack: !!s.agreedPickup
+      signed_name: s.signedName, received_by: s.staff, pickup_policy_ack: !!s.agreedPickup,
+      ownership_ack: !!s.agreedOwn, terms_version: s.termsVersion || null, terms_text: s.termsText || null, signed_at: s.signedAt || null
     };
   }
   function cardRowFromSub(c, i){
@@ -181,7 +182,12 @@
       let { data: existing } = await sb.from("orders").select("id").eq("ticket", s.ticket).maybeSingle();
       let id = existing && existing.id;
       if(!id){
-        const { data, error } = await sb.from("orders").insert(order).select("id").single();
+        let { data, error } = await sb.from("orders").insert(order).select("id").single();
+        // If the database hasn't had the terms columns added yet, save the order without them rather than leave it stuck.
+        if(error && /terms_version|terms_text|signed_at|ownership_ack/.test(error.message)){
+          const { terms_version, terms_text, signed_at, ownership_ack, ...rest } = order;
+          ({ data, error } = await sb.from("orders").insert(rest).select("id").single());
+        }
         if(error) throw new Error("Saving the order failed: " + error.message); id = data.id;
       }
       const { error: ce } = await sb.from("cards").upsert(cards.map(c => ({ ...c, order_id: id })), { onConflict: "order_id,position" });

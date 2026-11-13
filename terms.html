@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Submission terms | PBG Cards & Collectibles HTX</title>
+<meta name="description" content="The terms customers agree to when they submit cards for grading, prep, evaluation or auction through PBG Cards & Collectibles HTX.">
+<link rel="icon" href="assets/pbg-logo.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{--red:#E31B23;--panel:#151515;--line:#2E2E2E;--smoke:#B4B4B4}
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:#fff;font-family:Archivo,system-ui,sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:20px 20px 60px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+header img{height:56px;width:auto}
+header a{color:var(--smoke);font-size:15px;text-decoration:none}
+h1{font-style:italic;font-weight:900;font-variation-settings:"wdth" 112;font-size:clamp(30px,6vw,46px);line-height:1.05;margin:30px 0 8px}
+.meta{color:var(--smoke);font-size:15px}
+.note{margin-top:18px;padding:14px 16px;border-radius:12px;background:#1E1A10;border:1px solid #5A4A1A;font-size:15px}
+.terms{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;white-space:pre-wrap;font-size:16px;color:#E8E8E8}
+.acts{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.btn{display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--line);color:#fff;background:transparent;font:inherit;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.red{background:var(--red);border-color:var(--red)}
+@media print{
+  body{background:#fff;color:#000;font-size:11pt}
+  header,.acts,.note{display:none}
+  .terms{background:#fff;border:0;padding:0;color:#000;font-size:10.5pt}
+  h1{margin-top:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><a href="index.html" aria-label="PBG home"><img src="assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX"></a><a href="tel:+18326107081">832-610-7081</a></header>
+  <h1>Submission terms</h1>
+  <p class="meta" id="meta"></p>
+  <div class="note" id="note" hidden></div>
+  <div class="acts"><button class="btn red" onclick="print()">Print or save as PDF</button><a class="btn" href="index.html">Back to PBG</a></div>
+  <div class="terms" id="terms">Loading…</div>
+</div>
+<script src="terms.js?v=20261113a"></script>
+<script>
+const T = window.PBG_TERMS;
+const want = decodeURIComponent(location.hash.replace(/^#/, "")).trim();
+document.getElementById("meta").textContent = `Version ${T.version}. These are the terms customers agree to when they check in cards at PBG Cards & Collectibles HTX, 25170 I-45 N, Unit 9, Spring, TX 77386.`;
+document.getElementById("terms").textContent = T.text;
+if(want && want !== T.version){
+  const n = document.getElementById("note"); n.hidden = false;
+  n.textContent = `Your order was signed under terms version ${want}, which is different from the current version shown below. PBG keeps an exact copy of the terms you signed with your order. Call 832-610-7081 or ask at the counter for a copy.`;
+}
+</script>
+</body>
+</html>

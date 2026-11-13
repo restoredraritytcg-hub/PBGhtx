@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
-<script src="pbg-config.js?v=20261111a"></script>
-<script src="pbg-api.js?v=20261111a"></script>
+<script src="pbg-config.js?v=20261113a"></script>
+<script src="pbg-api.js?v=20261113a"></script>
 <style>
 :root{--red:#E31B23;--panel:#151515;--line:#2E2E2E;--smoke:#B4B4B4;--green:#2BD46A}
 *{box-sizing:border-box}
@@ -148,7 +148,8 @@ async function load(){
         ${c.grade ? `<span class="grade">${esc(c.grade)}</span>${c.cert_number ? `<p class="meta" style="margin-top:6px">Cert #${esc(c.cert_number)}</p>` : ""}` : ""}
         ${c.hammer_price ? `<p class="eval"><b>Sold for $${(+c.hammer_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> (hammer price, yours in full)${c.auction_lot_url && /^https:\/\//.test(c.auction_lot_url) ? ` · <a href="${esc(c.auction_lot_url)}" style="color:#fff">See the lot</a>` : ""}</p>` : ""}
       </div></div>`; }).join("")}</div></section>
-    ${HELP}`;
+    ${HELP}
+    <p class="muted" style="text-align:center;margin-top:18px;font-size:14px"><a href="terms.html${o.terms_version ? "#" + esc(o.terms_version) : ""}" style="color:inherit">Submission terms${o.terms_version ? " you signed (version " + esc(o.terms_version) + ")" : ""}</a></p>`;
 }
 window.addEventListener("hashchange", load);
 load();

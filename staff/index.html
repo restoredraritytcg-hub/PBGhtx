@@ -10,10 +10,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
-<script src="../pbg-config.js?v=20261111a"></script>
-<script src="../pbg-api.js?v=20261111a"></script>
-<script src="../site-content.js?v=20261111a"></script>
-<script src="site-editor.js?v=20261111a"></script>
+<script src="../pbg-config.js?v=20261113a"></script>
+<script src="../pbg-api.js?v=20261113a"></script>
+<script src="../site-content.js?v=20261113a"></script>
+<script src="site-editor.js?v=20261113a"></script>
 <style>
 :root{--ink:#141414;--red:#E31B23;--paper:#F4F4F2;--white:#fff;--steel:#666D7A;--line:#DADDE2;--green:#1C7C47;--amber:#9A5B00;--violet:#5B3FA8}
 *{box-sizing:border-box}
@@ -177,7 +177,8 @@ function info(o){
   const cls = ["picked_up","auction_paid"].includes(o.current_stage) ? "done" : o.current_stage === "ready" ? "ready" : cur.phase;
   return { list, idx, cur, cls, pct: Math.round(idx / Math.max(1, list.length - 1) * 100), next: list[idx+1] || null };
 }
-/* pickup / unclaimed-card clock (terms section 10) */
+/* pickup / unclaimed-card clock (terms section 12; section 10 on orders signed before 2026-11-13) */
+const termsSec = o => (o && o.terms_version && o.terms_version >= "2026-11-13") ? 12 : 10;
 const PICKUP = Object.assign({ freeDays: 30, feePerCardPerDay: 1, finalNoticeDay: 60, noticePeriodDays: 30 }, (window.PBG_CONFIG || {}).pickup || {});
 const addDays = (d, n) => new Date(new Date(d).getTime() + n * 86400000);
 const isoDay = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`; };
@@ -515,6 +516,7 @@ async function detail(id){
         <ul class="hist" style="margin-top:8px">${o.stage_events.slice().reverse().map(e => { const st = s.list.find(x => x.code === e.stage);
           return `<li><b>${esc(st ? st.label : e.stage)}</b> <small>${fmtDate(e.created_at, true)}${e.created_by_name ? " by " + esc(e.created_by_name) : ""}</small>
           ${e.note ? `<p style="margin-top:4px">${esc(e.note)}</p>` : ""}${e.visible_to_customer ? "" : '<div class="hidden-note">Hidden from customer</div>'}${e.email_customer && o.email ? '<div class="hidden-note" style="color:var(--green)">Customer emailed</div>' : ""}</li>`; }).join("")}</ul>
+        <p style="margin-top:12px;font-size:13px;color:var(--steel)">${o.terms_version ? `Signed terms version ${esc(o.terms_version)}${o.signed_at ? " on " + esc(new Date(o.signed_at).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })) : ""}. ${o.ownership_ack ? "Confirmed ownership and check-in photos. " : ""}${o.pickup_policy_ack ? "Acknowledged pickup policy." : ""} ${o.terms_text ? `<a href="#" id="viewTerms">View the exact terms they signed</a>` : ""}` : "Signed before terms versions were saved (original terms)."}</p>
         ${o.signature_url ? `<p style="margin-top:12px;font-size:13px;color:var(--steel)">Signed by ${esc(o.signed_name)}</p><img src="${esc(o.signature_url)}" alt="Customer signature" style="max-width:100%;border:1px solid var(--line);border-radius:8px">` : ""}
       </div>
     </div></div></div>`;
@@ -544,6 +546,11 @@ async function detail(id){
   });
   const cp = $("#copy"); if(cp) cp.onclick = async () => { try{ await navigator.clipboard.writeText(link); toast("Link copied"); }catch(e){ $("#lnk").select(); toast("Select the link and copy it"); } };
   const lt = $("#letter"); if(lt) lt.onclick = () => finalNoticeLetter(o);
+  const vt = $("#viewTerms"); if(vt) vt.onclick = e => { e.preventDefault();
+    const w = window.open("", "_blank"); if(!w){ toast("Allow pop-ups to view the terms."); return; }
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Signed terms ${esc(o.ticket)}</title><style>body{font:14px/1.55 Georgia,serif;max-width:720px;margin:40px auto;color:#111;white-space:pre-wrap}h1{font:700 18px Arial,sans-serif;white-space:normal}p.m{font:13px Arial,sans-serif;color:#555;white-space:normal}</style></head><body><h1>Terms signed for ticket ${esc(o.ticket)}</h1><p class="m">Signed by ${esc(o.signed_name)}${o.signed_at ? " on " + esc(new Date(o.signed_at).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "long", timeStyle: "short" })) + " (Central)" : ""}. Terms version ${esc(o.terms_version)}. Ownership and photo acknowledgement: ${o.ownership_ack ? "yes" : "no"}. Pickup policy acknowledgement: ${o.pickup_policy_ack ? "yes" : "no"}.</p>${o.signature_url ? `<img src="${esc(o.signature_url)}" alt="Signature" style="max-width:320px;border:1px solid #ccc">` : ""}\n\n${esc(o.terms_text)}<p class="m"><button onclick="print()">Print</button></p></body></html>`);
+    w.document.close();
+  };
   const fs = $("#fnSave"); if(fs) fs.onclick = async () => {
     const sent = $("#fnDate").value; if(!sent){ toast("Enter the date it was mailed."); return; }
     const deadline = isoDay(addDays(sent + "T12:00:00", PICKUP.noticePeriodDays));
@@ -582,12 +589,12 @@ function finalNoticeLetter(o){
   <p>${esc(o.customer_first)} ${esc(o.customer_last)}<br>${esc(o.mailing_address || "[MAILING ADDRESS]").replace(/,\s*/, "<br>")}</p>
   <h1>FINAL NOTICE: Unclaimed cards, ticket ${esc(o.ticket)}</h1>
   <p>Dear ${esc(o.customer_first)},</p>
-  <p>Your cards on ticket ${esc(o.ticket)} have been ready for pickup at PBG since ${longDate(p.readyAt)}. We let you know they were ready on that date. Under section 10 of the submission terms you signed on ${longDate(o.created_at)}, storage was free for ${PICKUP.freeDays} days and a holding fee of ${money(PICKUP.feePerCardPerDay)} per card per day has applied since then.</p>
+  <p>Your cards on ticket ${esc(o.ticket)} have been ready for pickup at PBG since ${longDate(p.readyAt)}. We let you know they were ready on that date. Under section ${termsSec(o)} of the submission terms you signed on ${longDate(o.created_at)}, storage was free for ${PICKUP.freeDays} days and a holding fee of ${money(PICKUP.feePerCardPerDay)} per card per day has applied since then.</p>
   <table><tr><th>Card</th><th>Grade</th></tr>${o.cards.map(c => `<tr><td>${esc([c.year, c.set_name, c.name, c.card_number && "#" + c.card_number].filter(Boolean).join(" "))}</td><td>${esc(c.grade || "")}</td></tr>`).join("")}</table>
   <table><tr><td>Unpaid service charges</td><td>${money(unpaid)}</td></tr><tr><td>Holding fee as of today (${p.cards} card${p.cards===1?"":"s"})</td><td>${money(p.fee)}</td></tr><tr><th>Amount owed as of today</th><th>${money(unpaid + p.fee)}</th></tr></table>
   <p>The holding fee continues at ${money(p.cards * PICKUP.feePerCardPerDay)} per day until pickup.</p>
   <div class="box"><b>Please pick up your cards and pay the amount owed by ${longDate(deadline)}.</b> We are open every day, 11 AM to 7 PM. Bring your ticket number and a photo ID, or send someone with your written authorization, your ticket number and their photo ID.<br><br>
-  If the cards are not picked up and paid for by that date, they will be considered abandoned and ownership passes to PBG, as you agreed in section 10 of the submission terms you signed. <b>PBG may sell them on or after ${longDate(addDays(deadline, 1))}.</b><br><br>
+  If the cards are not picked up and paid for by that date, they will be considered abandoned and ownership passes to PBG, as you agreed in section ${termsSec(o)} of the submission terms you signed. <b>PBG may sell them on or after ${longDate(addDays(deadline, 1))}.</b><br><br>
   If the cards are sold, <b>PBG will keep the entire sale price, including any amount above what you owe.</b> You will not receive any of the sale proceeds. The only refund available is the grading fees you paid to PBG at drop-off${dropoffPaid ? ` (${money(dropoffPaid)} on this ticket)` : " (none were paid on this ticket)"}, which PBG will refund if you ask for them after the sale.<br><br>
   When you signed the terms, you agreed that this notice process is reasonable and that you have no reasonable cause to object to a sale on or after that date once this notice has been sent.</div>
   <p>If you believe this notice is in error or need to make other arrangements, call us at 832-610-7081 before the date above.</p>

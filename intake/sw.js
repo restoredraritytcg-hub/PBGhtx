@@ -1,6 +1,6 @@
 /* PBG Intake offline support. Bump VERSION when you upload new app files so iPads pick them up. */
-const VERSION = "pbg-intake-v19";
-const SHELL = ["./", "index.html", "../pbg-config.js", "../pbg-api.js", "cardsearch.js", "rr-push.js", "cards.json", "pbg-logo.png?v=2", "restored-rarity-logo.jpg", "manifest.webmanifest",
+const VERSION = "pbg-intake-v20";
+const SHELL = ["./", "index.html", "../pbg-config.js", "../pbg-api.js", "../terms.js", "cardsearch.js", "rr-push.js", "cards.json", "pbg-logo.png?v=2", "restored-rarity-logo.jpg", "manifest.webmanifest",
   "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 const CDN = ["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"];
 

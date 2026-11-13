@@ -190,3 +190,10 @@ Stages live in the `grader_stages` table. Each company has its own list:
 - **SGC** stages are also included in case PBG adds SGC later
 
 Every order also gets PBG's own steps: Checked in, With Restored Rarity and Prep complete (only when there's prep work), On the way to the grader, Ready for pickup, and Picked up. To add a company, such as SGC on the iPad, add it under Staff > Settings; its stages are already in the table. Any company without its own rows uses a short generic list. Labels and the customer-facing description can be edited at any time.
+
+## 12. Submission terms (one copy, saved on every order)
+- The terms live in **terms.js** at the top of the repo. The iPad, the public page **pbgcardshtx.com/terms.html** and every receipt read from that one file, so they always match.
+- To change them: edit the text, set `version` to today's date, bump the `?v=` on the script tags, and push.
+- Each order saves the terms version, the **full text the customer signed**, the time they signed, and their ownership/condition acknowledgement. Staff portal > order > **View the exact terms they signed** opens a printable copy with the signature.
+- Database: run `supabase/update-2026-11-13-terms.sql` once in the SQL Editor. Until it's run, orders still save, just without the terms copy.
+- Have a Texas attorney review the terms before relying on sections 4, 9, 12 and 13.

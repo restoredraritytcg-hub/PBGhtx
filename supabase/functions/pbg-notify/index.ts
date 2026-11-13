@@ -60,6 +60,10 @@ function layout(title: string, body: string) {
 const button = (url: string, label: string) =>
   `<p style="margin:22px 0"><a href="${h(url)}" style="background:#E31B23;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:6px;display:inline-block">${h(label)}</a></p>`;
 
+// Terms: orders signed from 2026-11-13 use the expanded terms, where unclaimed cards are section 12 (was 10).
+const termsSec = (o: any) => (o.terms_version && o.terms_version >= "2026-11-13") ? 12 : 10;
+const termsLink = (o: any) => `${env("STATUS_URL", "https://pbgcardshtx.com/status.html").replace(/status\.html.*$/, "")}terms.html${o.terms_version ? "#" + encodeURIComponent(o.terms_version) : ""}`;
+
 // The customer's full receipt: what they're paying for, line by line, plus pickup and auction terms.
 function receipt(order: any, link: string, grading: string, rules: any = {}) {
   const evalPrice = +rules.evalPrice || 17, prepPrice = +rules.prepPrice || 7;
@@ -87,7 +91,8 @@ function receipt(order: any, link: string, grading: string, rules: any = {}) {
     ${cardTable(order.cards, !!order.auction_mode && order.auction_mode === "standalone")}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;margin-top:18px">${lines}</table>
     ${order.auction_house ? `<p style="font-size:14px;background:#eef3fa;padding:12px 14px;border-radius:8px;margin-top:18px"><b>Auction:</b> your cards go to ${h(house)}${order.auction_mode === "after_grading" ? " as soon as they're graded" : ""}. You receive <b>100% of the hammer price</b>; the buyer's premium is paid by the buyer. We pay you by ${h(order.payout_method ?? "your chosen method")}${order.payout_details ? " (" + h(order.payout_details) + ")" : ""} once ${h(house)} pays us.</p>` : ""}
-    <p style="font-size:13px;color:#555;margin-top:18px">Pickup: bring your ticket number and a photo ID. Storage is free for 30 days after we tell you your cards are ready, then $1 per card per day. Unclaimed cards are handled as described in section 10 of the terms you signed.</p>`;
+    <p style="font-size:13px;color:#555;margin-top:18px">Pickup: bring your ticket number and a photo ID. Storage is free for 30 days after we tell you your cards are ready, then $1 per card per day. Unclaimed cards are handled as described in section ${termsSec(order)} of the terms you signed.</p>
+    <p style="font-size:13px;color:#555">Your signed terms${order.terms_version ? ` (version ${h(order.terms_version)})` : ""}: <a href="${termsLink(order)}" style="color:#E31B23">${termsLink(order)}</a></p>`;
 }
 
 function cardTable(cards: any[], showGrades = false) {
@@ -188,7 +193,7 @@ Deno.serve(async (req) => {
         ${note}
         ${idx >= 0 ? `<p style="font-size:14px;color:#555">Step ${idx + 1} of ${list.length} for your ${h(grading)} order.</p>` : ""}
         ${ready && order.payment_when === "pickup" ? `<p>Balance due at pickup: <b>${money(order.total)}</b>. Bring your ticket number and a photo ID.</p>` : ""}
-        ${ready ? `<p style="font-size:14px;background:#fff4cc;padding:10px 12px;border-radius:8px">Storage is free until <b>${new Date(new Date(order.ready_at ?? ev.created_at).getTime() + 30 * 86400000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}</b>. After that, a holding fee of $1 per card per day applies (terms section 10).</p>` : ""}
+        ${ready ? `<p style="font-size:14px;background:#fff4cc;padding:10px 12px;border-radius:8px">Storage is free until <b>${new Date(new Date(order.ready_at ?? ev.created_at).getTime() + 30 * 86400000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}</b>. After that, a holding fee of $1 per card per day applies (terms section ${termsSec(order)}).</p>` : ""}
         ${button(link, done ? "See your grades" : "Track your order")}
         ${graded || order.cards.some((c: any) => c.eval_result) ? cardTable(order.cards, graded) : ""}`), order, ev.id);
     }
