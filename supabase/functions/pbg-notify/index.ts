@@ -64,6 +64,9 @@ const button = (url: string, label: string) =>
 const termsSec = (o: any) => (o.terms_version && o.terms_version >= "2026-11-13") ? 12 : 10;
 const termsLink = (o: any) => `${env("STATUS_URL", "https://pbgcardshtx.com/status.html").replace(/status\.html.*$/, "")}terms.html${o.terms_version ? "#" + encodeURIComponent(o.terms_version) : ""}`;
 
+// Repair estimates are saved in each card's repair_note as "(est. $31.50 with PBG 10% off, ...)".
+const repairEst = (cards: any[]) => cards.filter((c) => c.repair).reduce((a, c) => a + (+((String(c.repair_note || "").match(/est\. \$([0-9.]+)/) || [])[1] || 0)), 0);
+
 // The customer's full receipt: what they're paying for, line by line, plus pickup and auction terms.
 function receipt(order: any, link: string, grading: string, rules: any = {}) {
   const evalPrice = +rules.evalPrice || 17, prepPrice = +rules.prepPrice || 7;
@@ -77,7 +80,7 @@ function receipt(order: any, link: string, grading: string, rules: any = {}) {
     n(order.prep_count) ? row(`Prep &times; ${n(order.prep_count)}`, money(prepPrice * n(order.prep_count))) : "",
     n(order.gem_fees) ? row(`Gem service with magnetic case &times; ${n(order.gem_count)}`, money(order.gem_fees)) : "",
     n(order.mag_fees) ? row(`Matching magnetic slab case &times; ${n(order.mag_count)} (handed over at pickup)`, money(order.mag_fees)) : "",
-    order.cards.some((c: any) => c.repair) ? row(`Repairs by Restored Rarity`, "Quoted separately") : "",
+    order.cards.some((c: any) => c.repair) ? row(`Repairs by Restored Rarity, with the PBG discount (billed separately by Restored Rarity; price confirmed after inspection)`, repairEst(order.cards) ? "About " + money(repairEst(order.cards)) : "Quoted separately") : "",
     order.auction_house ? row(`Auction consignment to ${h(house)}`, "No seller fee") : "",
     n(order.tax) ? row("Tax", money(order.tax)) : "",
     row(n(order.total) ? (order.payment_when === "pickup" ? "Total due at pickup" : `Total paid${order.payment_method ? " (" + h(order.payment_method) + ")" : ""}`) : "Total", money(order.total), true),
@@ -99,7 +102,7 @@ function cardTable(cards: any[], showGrades = false) {
   return `<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-size:14px;margin-top:8px">
     <tr style="background:#141414;color:#fff"><th align="left">Card</th><th align="left">Services</th>${showGrades ? '<th align="left">Grade</th>' : ""}</tr>
     ${cards.map((c) => `<tr style="border-bottom:1px solid #eee"><td>${h([c.year, c.set_name, c.name, c.card_number && "#" + c.card_number, c.variant].filter(Boolean).join(" "))}${c.eval_result ? `<br><span style="color:#5B3FA8;font-size:13px">Evaluation: ${h(c.eval_result)}</span>` : ""}</td>
-      <td>${[c.gem && "Gem service + magnetic case", c.mag_case && "Magnetic slab case (at pickup)", c.eval && "Full evaluation", c.clean && "Prep", c.repair && "Repair quote"].filter(Boolean).join(", ") || "None"}</td>
+      <td>${[c.gem && "Gem service + magnetic case", c.mag_case && "Magnetic slab case (at pickup)", c.eval && "Full evaluation", c.clean && "Prep", c.repair && ("Restored Rarity repair" + (c.repair_note ? ": " + h(c.repair_note) : ""))].filter(Boolean).join(", ") || "None"}</td>
       ${showGrades ? `<td><b>${h(c.grade || "")}</b>${c.cert_number ? `<br><span style="font-size:12px;color:#666">Cert ${h(c.cert_number)}</span>` : ""}</td>` : ""}</tr>`).join("")}
   </table>`;
 }

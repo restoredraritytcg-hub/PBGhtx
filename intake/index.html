@@ -12,11 +12,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<script src="../pbg-config.js?v=20261113a"></script>
-<script src="../pbg-api.js?v=20261113a"></script>
-<script src="../terms.js?v=20261113a"></script>
-<script src="cardsearch.js?v=20261113a"></script>
-<script src="rr-push.js?v=20261113a"></script>
+<script src="../pbg-config.js?v=20261116a"></script>
+<script src="../pbg-api.js?v=20261116a"></script>
+<script src="../terms.js?v=20261116a"></script>
+<script src="cardsearch.js?v=20261116a"></script>
+<script src="rr-push.js?v=20261116a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -275,6 +275,9 @@ const payoutLabel = k => k === "PayPal" ? "PayPal email" : "Name on the bank acc
 const houseName = h => h === "Best fit" ? "the best-fit auction house" : h;
 const CATEGORIES = ["Pokémon", "Sports", "Other TCG"];
 const REPAIR_TYPES = { base: "Base repair", major: "Major repair", unsure: "Not sure, needs a look" };
+// Repair label and PBG estimate for one card (prices from restoredraritytcg.com, minus the PBG discount)
+const repairText = c => RR.label(c) + (c.repairPrice ? ` · est. ${money(c.repairPrice)}` : "");
+const repairEstimate = cards => (n => Math.round(n * 100) / 100)(cards.filter(c => c.repair && c.repairPrice).reduce((a, c) => a + (+c.repairPrice || 0), 0));
 const IF_LOW = [
   ["call",   "Call me first"],
   ["submit", "Submit anyway"],
@@ -576,7 +579,7 @@ function cards(){
         <h3>${esc(c.name || "Untitled card")}</h3>
         <div class="meta">${esc([c.year, c.set, c.number && "#"+c.number, c.variant].filter(Boolean).join(", "))}${c.value ? ` &nbsp;Declared ${money(c.value)}` : ""}</div>
         <div class="tags"><span class="tag">${esc(c.category)}</span>${standalone && c.slabGrade ? `<span class="tag">${esc(c.slabGrade)}${c.cert ? " · cert " + esc(c.cert) : ""}</span>` : ""}${sub.auction ? `<span class="tag" style="background:#E6EEF8;color:#1F3B63">Auction: ${esc(sub.auction.house === "Best fit" ? "PBG picks" : sub.auction.house)}</span>` : ""}
-          ${c.clean ? '<span class="tag rr">Prep</span>' : ""}${c.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${c.repair ? `<span class="tag rr">Repair: ${esc(REPAIR_TYPES[c.repairType] || "quote")}</span>` : ""}
+          ${c.clean ? '<span class="tag rr">Prep</span>' : ""}${c.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${c.repair ? `<span class="tag rr">Repair: ${esc(repairText(c))}</span>` : ""}
           ${over ? `<span class="tag warn">Over ${esc(sub.tier)} limit</span>` : ""}${isGem(c) ? `<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service +${money(gemFee(c))}</span>` : ""}${hasMag(c) ? '<span class="tag">Mag slab case</span>' : ""}</div>
       </div>
       <div style="display:flex;gap:8px"><button class="btn btn-line btn-sm" data-edit="${i}">Edit</button><button class="btn btn-ghost btn-sm" data-del="${i}" aria-label="Remove ${esc(c.name)}">Remove</button></div>
@@ -643,10 +646,11 @@ function cardEditor(idx){
         <div class="grid" style="margin-top:6px">
           <label class="toggle"><input type="checkbox" id="clean" ${c.clean?"checked":""}><div><b>Prep</b><span>Cleaning and grading prep by a restoration professional who knows each grading company's requirements.</span></div><span class="amt">${money(settings.prepPrice)}</span></label>
           <label class="toggle"><input type="checkbox" id="eval" ${c.eval?"checked":""}><div><b>Full evaluation with magnification <small style="color:var(--red);font-weight:800">PBG partner rate</small></b><span>A professional pre-grader checks centering, corners, edges and surface under magnification before it ships.</span></div><span class="amt">${money(settings.evalPrice)}</span></label>
-          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity</b><span>Sent to Restored Rarity as its own repair submission. They quote it first and bill it directly; nothing is done without your OK.</span></div><span class="amt">Quote</span></label>
+          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity <small style="color:var(--red);font-weight:800">${RR.discount()}% off for PBG customers</small></b><span>Sent to Restored Rarity as its own repair submission. Restored Rarity confirms the price after inspecting the card and bills it directly; nothing is done without your OK.</span></div><span class="amt">From ${money(Math.min(...RR.repairs().map(r => RR.quote(r.title).pbg)))}</span></label>
           <div id="rnWrap" ${c.repair?"":"hidden"} class="grid g2">
-            <label class="f">Repair type<select class="t" id="repairType">${Object.entries(REPAIR_TYPES).map(([k, l]) => `<option value="${k}" ${c.repairType===k?"selected":""}>${esc(l)}</option>`).join("")}</select></label>
-            <label class="f">What needs fixing?<input class="t" id="repairNote" value="${esc(c.repairNote)}" placeholder="e.g. light crease, bent corner"></label>
+            <label class="f" style="grid-column:1/-1">Repair type<select class="t" id="repairType">${RR.repairs().map(r => { const q = RR.quote(r.title), sel = c.repairType === r.title || RR.REPAIR_SERVICE[c.repairType] === r.title; return `<option value="${esc(r.title)}" ${sel?"selected":""}>${esc(r.title)}: ${money(q.pbg)} (was ${money(q.list)})</option>`; }).join("")}<option value="unsure" ${c.repairType==="unsure"?"selected":""}>Not sure, needs a look (Restored Rarity quotes it)</option></select></label>
+            <label class="f" style="grid-column:1/-1">What needs fixing?<input class="t" id="repairNote" value="${esc(c.repairNote)}" placeholder="e.g. light crease, bent corner"></label>
+            <div id="repairEst" class="notice" style="grid-column:1/-1;font-size:14px;background:#EFE9FB;color:#3B2A78;margin:0"></div>
           </div>
         </div></div>
       <div class="err" id="cerr" hidden></div>
@@ -656,6 +660,10 @@ function cardEditor(idx){
     $("#cat", m).onclick = e => { const b = e.target.closest("button"); if(!b) return; c.category = b.textContent; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b));
       $("#nameLbl", m).firstChild.textContent = (c.category==="Sports" ? "Player" : "Card name") + " "; $("#name", m).placeholder = c.category==="Sports" ? "e.g. Shohei Ohtani" : "e.g. Charizard ex"; };
     $("#repair", m).onchange = e => $("#rnWrap", m).hidden = !e.target.checked;
+    const repairEst = () => { const q = RR.quote($("#repairType", m).value), el = $("#repairEst", m);
+      el.innerHTML = q ? `<b>${esc(q.title)}: about ${money(q.pbg)}</b> with the PBG ${q.off}% discount (Restored Rarity's price is ${money(q.list)}).${q.desc ? "<br>" + esc(q.desc) : ""}<br><small>An estimate from Restored Rarity's current prices. They confirm the final price after inspecting the card, before any work starts.</small>`
+        : `Restored Rarity will look at the card and send a quote before any work starts. PBG customers get ${RR.discount()}% off Restored Rarity's posted repair prices.`; };
+    $("#repairType", m).onchange = repairEst; repairEst();
     const gemNote = () => { const v = +$("#value", m).value || 0, el = $("#gemNote", m), f = (sub.grader && sub.grader !== "None") ? gemFeeFor(v) : 0;
       el.hidden = !f; if(f) el.textContent = `Gem service +${money(f)}, includes a magnetic case`;
       const mg = $("#mag", m); if(mg){ mg.disabled = !!f; if(f) mg.checked = false; $("#magSub", m).textContent = f ? "Already included with the gem service on this card." : `A magnetic case sized for your ${sub.grader} slab, handed to you with the slab at pickup. Only with a grading submission.`; } };
@@ -672,6 +680,7 @@ function cardEditor(idx){
       c.mag = !!($("#mag", m) && $("#mag", m).checked);
       if(standalone){ c.slabGrade = $("#slabGrade", m).value.trim(); c.cert = $("#cert", m).value.trim(); c.clean = c.eval = c.repair = false; }
       c.repairType = $("#repairType", m).value;
+      { const q = c.repair ? RR.quote(c.repairType) : null; c.repairList = q ? q.list : null; c.repairPrice = q ? q.pbg : null; c.repairOff = q ? q.off : null; }
       const errs = [];
       $("#name", m).classList.toggle("bad", !c.name); if(!c.name) errs.push(c.category==="Sports" ? "the player" : "the card name");
       const badVal = c.value === "" || isNaN(+c.value) || +c.value < 0; $("#value", m).classList.toggle("bad", badVal); if(badVal) errs.push("a declared value (0 is OK)");
@@ -710,7 +719,7 @@ function review(){
         <tbody>${sub.cards.map(x => `<tr><td><b>${esc(x.name)}</b><br><span style="color:var(--steel);font-size:14px">${esc([x.year, x.set, x.number && "#"+x.number, x.variant].filter(Boolean).join(", "))}</span></td>
           <td class="n">${money(+x.value||0)}</td>${noGrade?"":`<td class="n">${money(t.gradeEach)}</td>`}
           <td class="n">${x.eval ? money(settings.evalPrice) : "None"}</td><td class="n">${x.clean ? money(settings.prepPrice) : "None"}</td>
-          <td>${x.repair ? esc(REPAIR_TYPES[x.repairType] || "Repair") + (x.repairNote ? ": " + esc(x.repairNote) : "") : "None"}</td></tr>`).join("")}</tbody>`}
+          <td>${x.repair ? esc(repairText(x)) + (x.repairNote ? ": " + esc(x.repairNote) : "") : "None"}</td></tr>`).join("")}</tbody>`}
       </table></div>
       <div class="totals">
         ${noGrade ? "" : `<div><span>Grading (${t.count})</span><span>${money(t.grading)}</span></div>`}
@@ -718,7 +727,7 @@ function review(){
         ${t.cleaning ? `<div><span>Prep (${t.prepCount})</span><span>${money(t.cleaning)}</span></div>` : ""}
         ${t.gems ? `<div><span>Gem service with magnetic case (${t.gemCount})</span><span>${money(t.gems)}</span></div>` : ""}
         ${t.mags ? `<div><span>Magnetic slab cases, at pickup (${t.magCount})</span><span>${money(t.mags)}</span></div>` : ""}
-        ${t.repairs ? `<div><span>Repairs sent to Restored Rarity (${t.repairs})</span><span>Quoted by Restored Rarity</span></div>` : ""}
+        ${t.repairs ? `<div><span>Repairs by Restored Rarity (${t.repairs}), estimate with ${RR.discount()}% PBG discount<br><small style="color:var(--steel)">Not included in today's total. Restored Rarity confirms the price and bills you directly.</small></span><span>${repairEstimate(sub.cards) ? (sub.cards.some(c => c.repair && !c.repairPrice) ? "From " : "About ") + money(repairEstimate(sub.cards)) : "Quoted by Restored Rarity"}</span></div>` : ""}
         ${A ? `<div><span>Auction consignment (${t.count})</span><span>No seller fee</span></div>` : ""}
         ${t.tax ? `<div><span>Tax</span><span>${money(t.tax)}</span></div>` : ""}
         <div class="grand"><span>Total</span><span>${money(t.total)}</span></div>
@@ -833,7 +842,7 @@ function staffcheck(){
         <div style="margin-top:10px">${sub.cards.map((x, i) => `<div class="cardrow" style="grid-template-columns:64px 1fr">
           <div class="thumb" style="width:64px;height:88px;${x.front ? `background-image:url(${x.thumb || x.front})` : ""}">${x.front ? "" : "No photo"}</div>
           <div><b>${i+1}. ${esc(x.name)}</b><div class="meta">${esc([x.year, x.set, x.number && "#"+x.number, x.variant, "Declared " + money(+x.value||0)].filter(Boolean).join(", "))}</div>
-          <div class="tags">${isGem(x) ? '<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service</span>' : ""}${hasMag(x) ? '<span class="tag">Mag slab case</span>' : ""}${x.clean ? '<span class="tag rr">Prep</span>' : ""}${x.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${x.repair ? '<span class="tag rr">Repair quote</span>' : ""}</div></div></div>`).join("")}</div>
+          <div class="tags">${isGem(x) ? '<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service</span>' : ""}${hasMag(x) ? '<span class="tag">Mag slab case</span>' : ""}${x.clean ? '<span class="tag rr">Prep</span>' : ""}${x.eval ? '<span class="tag rr">Full evaluation</span>' : ""}${x.repair ? `<span class="tag rr">Repair: ${esc(repairText(x))}</span>` : ""}</div></div></div>`).join("")}</div>
       </div>
       <div class="panel">
         <h3>Before you accept</h3>
@@ -923,8 +932,9 @@ async function printReceipt(s){
     <div>Grading: ${s.auction && s.auction.mode === "standalone" ? "None (auction only)" : s.grader==="None" ? "None (prep only)" : esc(s.grader+" "+s.tier)}</div>
     ${s.auction ? `<div>Auction: ${esc(houseName(s.auction.house))}${s.auction.mode === "after_grading" ? ", straight after grading" : ""}. You receive 100% of the hammer price; payout by ${esc(s.auction.payout)}${s.auction.payoutDetails ? " (" + esc(s.auction.payoutDetails) + ")" : ""}.</div>` : ""}
     <table><tr><th>Card</th><th>Declared</th><th>Services</th></tr>
-    ${s.cards.map(x => `<tr><td>${esc([x.year,x.set,x.name,x.number&&"#"+x.number,x.variant].filter(Boolean).join(" "))}</td><td>${money(+x.value||0)}</td><td>${[x.gem&&"Gem service + magnetic case",x.mag&&"Magnetic slab case at pickup",x.eval&&"Full evaluation",x.clean&&"Prep",x.repair&&"Repair quote"].filter(Boolean).join(", ")||"None"}</td></tr>`).join("")}</table>
+    ${s.cards.map(x => `<tr><td>${esc([x.year,x.set,x.name,x.number&&"#"+x.number,x.variant].filter(Boolean).join(" "))}</td><td>${money(+x.value||0)}</td><td>${[x.gem&&"Gem service + magnetic case",x.mag&&"Magnetic slab case at pickup",x.eval&&"Full evaluation",x.clean&&"Prep",x.repair&&("Restored Rarity repair: " + repairText(x))].filter(Boolean).join(", ")||"None"}</td></tr>`).join("")}</table>
     <p style="margin-top:10pt">Total: <b>${money(t.total)}</b> (${s.payment.when==="pickup" ? "due at pickup" : "paid, " + esc(s.payment.method)})</p>
+    ${s.cards.some(x => x.repair) ? `<p style="font-size:10pt">Repairs are billed separately by Restored Rarity TCG${repairEstimate(s.cards) ? `: about ${money(repairEstimate(s.cards))} with the PBG ${RR.discount()}% discount` : ""}. Restored Rarity confirms the price after inspecting the card.</p>` : ""}
     <p>Prep services by Restored Rarity TCG. Bring this ticket number and a photo ID to pick up.</p>
     <div style="display:flex;gap:14pt;align-items:center;margin-top:10pt"><div id="printQR" style="width:110pt;height:110pt"></div>
       <p style="font-size:10pt">${s.publicToken ? "Track your order:<br>" + esc(PBG.statusUrl(s.publicToken)) : ""}${s.termsVersion ? "<br><br>Terms you signed (version " + esc(s.termsVersion) + "):<br>pbgcardshtx.com/terms.html#" + esc(s.termsVersion) : ""}</p></div>`;
@@ -1040,8 +1050,8 @@ function staffSubs(all){
     </div>`;
   const r = $("#retry"); if(r) r.onclick = async () => { r.disabled = true; r.textContent = "Uploading…"; await syncAll(); staff("subs"); };
   $("#csv").onclick = async () => {
-    const rows = [["Ticket","Date","First","Last","Phone","Email","Grader","Tier","Card","Year","Set","Number","Variant","Declared","Prep","Full evaluation","Repair","Repair note","Ticket total","Payment","Staff","Uploaded"]];
-    all.forEach(s => s.cards.forEach(c => rows.push([s.ticket, s.createdAt, s.customer.first, s.customer.last, s.customer.phone, s.customer.email, s.grader, s.tier||"", c.name, c.year, c.set, c.number, c.variant, c.value, c.clean?"Y":"", c.eval?"Y":"", c.repair?"Y":"", c.repairNote, s.totals.total.toFixed(2), s.payment.when+"/"+s.payment.method, s.staff, s.synced?"Y":"N"])));
+    const rows = [["Ticket","Date","First","Last","Phone","Email","Grader","Tier","Card","Year","Set","Number","Variant","Declared","Prep","Full evaluation","Repair","Repair type","Repair estimate","Repair note","Ticket total","Payment","Staff","Uploaded"]];
+    all.forEach(s => s.cards.forEach(c => rows.push([s.ticket, s.createdAt, s.customer.first, s.customer.last, s.customer.phone, s.customer.email, s.grader, s.tier||"", c.name, c.year, c.set, c.number, c.variant, c.value, c.clean?"Y":"", c.eval?"Y":"", c.repair?"Y":"", c.repair ? RR.label(c) : "", c.repairPrice || "", c.repairNote, s.totals.total.toFixed(2), s.payment.when+"/"+s.payment.method, s.staff, s.synced?"Y":"N"])));
     const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
     try{ await navigator.clipboard.writeText(csv); toast("CSV copied. Paste it into a spreadsheet."); }catch(e){ toast("Couldn't copy here. Use the staff portal instead."); }
   };
@@ -1058,7 +1068,7 @@ function viewSub(s){
     </div>
     <div style="margin-top:16px">${s.cards.map(x => `<div class="cardrow"><div class="thumb" style="${x.front?`background-image:url(${x.front})`:""}">${x.front?"":"No photo"}</div>
       <div><h3>${esc(x.name)}</h3><div class="meta">${esc([x.category,x.year,x.set,x.number&&"#"+x.number,x.variant].filter(Boolean).join(", "))}, declared ${money(+x.value||0)}</div>
-      <div class="tags">${x.clean?'<span class="tag rr">Prep</span>':""}${x.eval?'<span class="tag rr">Full evaluation</span>':""}${x.repair?`<span class="tag rr">Repair: ${esc(x.repairNote||"quote")}</span>`:""}</div></div><span></span></div>`).join("")}</div>
+      <div class="tags">${x.clean?'<span class="tag rr">Prep</span>':""}${x.eval?'<span class="tag rr">Full evaluation</span>':""}${x.repair?`<span class="tag rr">Repair: ${esc(repairText(x))}${x.repairNote ? " · " + esc(x.repairNote) : ""}</span>`:""}</div></div><span></span></div>`).join("")}</div>
     ${s.signature ? `<p style="margin-top:12px;color:var(--steel);font-size:14px">Signed by ${esc(s.signedName)}</p><img src="${s.signature}" alt="Customer signature" style="max-width:320px;border:1px solid var(--line);border-radius:8px">` : ""}
     ${s.syncError && !s.synced ? `<div class="notice" style="margin-top:12px">Last upload attempt: ${esc(s.syncError)}</div>` : ""}
     ${s.cards.some(c => c.repair) ? `<div class="notice" style="margin-top:12px;background:#EFE9FB;color:#3B2A78">${s.rrSynced ? `Repair cards sent to Restored Rarity as <b>${esc(s.rrCode)}</b>.` : `Repair cards not sent to Restored Rarity yet${s.rrError ? ": " + esc(s.rrError) : ""}. It retries automatically.`}</div>` : ""}
@@ -1216,6 +1226,7 @@ async function loadPricing(){
 
 /* ---------------- start ---------------- */
 step = "welcome";
+RR.loadPrices();   // Restored Rarity repair prices, refreshed every time the app opens
 PBG.init().catch(e => toast(e.message)).then(loadPricing).finally(() => { render(); syncAll(); });
 if("serviceWorker" in navigator && location.protocol === "https:"){ navigator.serviceWorker.register("sw.js").catch(() => {}); }
 </script>

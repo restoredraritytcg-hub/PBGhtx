@@ -107,7 +107,7 @@
     return { position: i+1, category: c.category, name: c.name, year: c.year || null, set_name: c.set || null, card_number: c.number || null,
       variant: c.variant || null, declared_value: +c.value || 0, clean: !!c.clean, eval: !!c.eval, repair: !!c.repair, gem: !!c.gem, gem_fee: +c.gemFee || 0, mag_case: !!c.mag,
       grade: c.slabGrade || null, cert_number: c.cert || null,
-      repair_note: c.repair ? [({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || "Repair", c.repairNote].filter(Boolean).join(": ") : null };
+      repair_note: c.repair ? [(({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || c.repairType || "Repair") + (c.repairPrice ? ` (est. $${(+c.repairPrice).toFixed(2)} with PBG ${c.repairOff || 10}% off, list $${(+c.repairList).toFixed(2)})` : ""), c.repairNote].filter(Boolean).join(": ") : null };
   }
   const round = n => Math.round((+n || 0) * 100) / 100;
 

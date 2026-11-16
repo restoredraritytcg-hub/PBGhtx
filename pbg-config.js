@@ -29,6 +29,7 @@ window.PBG_CONFIG = {
     appsScriptUrl: "https://script.google.com/macros/s/AKfycbyB3lWxsrKg0hfSh4YvHG319jyenpPE1uljsiW1AcrQ328kDO6npH9mncOkellCYJVM/exec",
     portalUrl: "https://restoredraritytcg.com/portal/view.html",
     submitUrl: "https://restoredraritytcg.com/#submit",   // home-screen button on the iPad: Restored Rarity's own submission form
-    referralCode: ""          // optional: a Restored Rarity referral code to tag PBG drop-offs
+    referralCode: "",         // optional: a Restored Rarity referral code to tag PBG drop-offs
+    pbgDiscount: 10           // % off Restored Rarity's posted repair prices for PBG customers (prices load live from restoredraritytcg.com)
   }
 };

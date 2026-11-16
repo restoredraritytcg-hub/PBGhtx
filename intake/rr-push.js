@@ -7,6 +7,41 @@
    In demo mode (PBG Supabase not connected) nothing is sent; a pretend RR code is returned. */
 (function(){
   const REPAIR_SERVICE = { base: "Base Repair", major: "Major Repair", unsure: "Repair evaluation, quote needed" };
+
+  /* Repair prices come live from restoredraritytcg.com's own price list (Restored Rarity's Supabase site_get,
+     the same call its website makes), so a price change on the Restored Rarity site shows on the iPad too.
+     The last good list is kept on the iPad; the built-in list is only used if it has never loaded. */
+  const DEFAULT_REPAIRS = [
+    { title: "Base Repair", price: 35, desc: "Minor corner or edge lifting, dents or gouges under ¼ inch, and creases under ½ inch." },
+    { title: "Major Repair", price: 50, desc: "Major corner or edge lifting, delamination or layer separation, dents or gouges over ¼ inch, and creases over ½ inch." }
+  ];
+  const CACHE = "pbg.rrRepairPrices";
+  let REPAIRS = DEFAULT_REPAIRS, loadedAt = null;
+  try{ const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if(c && Array.isArray(c.list) && c.list.length){ REPAIRS = c.list; loadedAt = c.at; } }catch(_){}
+  const num = v => +String(v == null ? "" : v).replace(/[^0-9.]/g, "") || 0;
+  const discount = () => { const d = +cfg().pbgDiscount; return isFinite(d) && cfg().pbgDiscount != null ? d : 10; };
+  const r2 = n => Math.round(n * 100) / 100;
+
+  async function loadPrices(){
+    if(!cfg().supabaseUrl || !cfg().anonKey) return REPAIRS;
+    try{
+      const r = await fetch(`${cfg().supabaseUrl}/rest/v1/rpc/site_get`, { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: "{}" });
+      const c = r.ok ? await r.json() : null;
+      const list = ((c && c.prices && c.prices.services) || [])
+        .filter(x => x && x.type === "repair" && x.title)
+        .map(x => ({ title: String(x.title).trim(), price: num(x.price), desc: String(x.desc || "").trim() }))
+        .filter(x => x.price > 0);
+      if(list.length){ REPAIRS = list; loadedAt = new Date().toISOString(); try{ localStorage.setItem(CACHE, JSON.stringify({ list, at: loadedAt })); }catch(_){} }
+    }catch(e){ console.warn("Restored Rarity prices not loaded; using the last saved list", e); }
+    return REPAIRS;
+  }
+  // Price for one repair type: Restored Rarity's posted price, and the PBG customer price after the discount.
+  function quote(title){
+    const t = REPAIR_SERVICE[title] || title, r = REPAIRS.find(x => x.title === t);
+    if(!r) return null;
+    return { title: r.title, desc: r.desc, list: r.price, pbg: r2(r.price * (1 - discount() / 100)), off: discount() };
+  }
+  const label = c => !c ? "" : c.repairType === "unsure" ? "Not sure, needs a look" : (REPAIR_SERVICE[c.repairType] || c.repairType || "Repair");
   const SHOP = "PBG Cards & Collectibles HTX, 25170 I-45 N, Unit 9, Spring, TX 77386";
 
   const cfg = () => (window.PBG_CONFIG && window.PBG_CONFIG.restoredRarity) || {};
@@ -26,7 +61,7 @@
   }
   const fileName = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
   const details = c => [c.set, c.number, c.year].filter(Boolean).join(" · ");
-  const serviceOf = c => REPAIR_SERVICE[c.repairType] || REPAIR_SERVICE.base;
+  const serviceOf = c => REPAIR_SERVICE[c.repairType] || c.repairType || REPAIR_SERVICE.base;
 
   async function pushRepairs(s){
     const cards = s.cards.filter(c => c.repair);
@@ -38,6 +73,7 @@
       `Service: ${serviceOf(c)}`,
       c.value ? `NM value: $${String(c.value).replace(/^\$/, "")}` : "",
       c.repairNote ? `Needs: ${c.repairNote}` : "",
+      c.repairPrice ? `PBG customer price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} list price). Customer was shown this estimate at drop-off.` : `PBG customer: ${discount()}% off the posted repair price.`,
       `Dropped off at PBG, ticket ${s.ticket}` + (s.grader && s.grader !== "None" ? ` (PBG is also submitting it to ${s.grader} ${s.tier || ""})` : "")
     ].filter(Boolean).join("\n");
 
@@ -84,5 +120,5 @@
     return { code: s.rrPortal.code, link: `${base}#t=${s.rrPortal.token}` };
   }
 
-  window.RR = { pushRepairs, REPAIR_SERVICE };
+  window.RR = { pushRepairs, REPAIR_SERVICE, loadPrices, quote, label, repairs: () => REPAIRS, loadedAt: () => loadedAt, discount };
 })();
