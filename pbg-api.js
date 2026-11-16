@@ -107,7 +107,7 @@
     return { position: i+1, category: c.category, name: c.name, year: c.year || null, set_name: c.set || null, card_number: c.number || null,
       variant: c.variant || null, declared_value: +c.value || 0, clean: !!c.clean, eval: !!c.eval, repair: !!c.repair, gem: !!c.gem, gem_fee: +c.gemFee || 0, mag_case: !!c.mag,
       grade: c.slabGrade || null, cert_number: c.cert || null,
-      repair_note: c.repair ? [(({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || c.repairType || "Repair") + (c.repairPrice ? ` (est. $${(+c.repairPrice).toFixed(2)} with PBG ${c.repairOff || 10}% off, list $${(+c.repairList).toFixed(2)})` : ""), c.repairNote].filter(Boolean).join(": ") : null };
+      repair_note: c.repair ? [(({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || c.repairType || "Repair") + (c.repairPrice ? ` (est. $${(+c.repairPrice).toFixed(2)} with PBG ${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `, incl. $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""})` : c.repairCustom ? " (custom quote: card value over the surcharge table)" : ""), c.repairNote].filter(Boolean).join(": ") : null };
   }
   const round = n => Math.round((+n || 0) * 100) / 100;
 
@@ -236,6 +236,18 @@
     },
     photoUrl(path){ if(!path) return null; if(path.startsWith("data:")) return path; return sb.storage.from("card-photos").getPublicUrl(path).data.publicUrl; },
     async payouts(from, to){ const { data, error } = await sb.rpc("payout_report", { p_from: from, p_to: to }); if(error) throw new Error(error.message); return data; },
+    // Payments from PBG to Restored Rarity (owner and partner)
+    async rrPayments(from, to){
+      let q = sb.from("rr_payments").select("*").order("paid_on", { ascending: false }).order("created_at", { ascending: false });
+      if(from) q = q.gte("paid_on", from); if(to) q = q.lte("paid_on", to);
+      const { data, error } = await q;
+      if(error) throw new Error(/rr_payments/.test(error.message) && /exist|schema cache/.test(error.message) ? "The payment log needs a database update. Run supabase/update-2026-11-16-rr-payments.sql in Supabase." : error.message);
+      return data;
+    },
+    async addRrPayment(p){ const st = await this.currentStaff().catch(() => null);
+      const { error } = await sb.from("rr_payments").insert({ paid_on: p.paid_on, amount: +p.amount, method: p.method || null, reference: p.reference || null, note: p.note || null, created_by: st && st.name || null });
+      if(error) throw new Error(error.message); },
+    async deleteRrPayment(id){ const { error } = await sb.from("rr_payments").delete().eq("id", id); if(error) throw new Error(error.message); },
     async getSite(){
       const { data, error } = await sb.from("site_content").select("key,value,updated_at,updated_by");
       if(error) throw new Error(error.message);
@@ -402,6 +414,9 @@
         events: o.stage_events.filter(e => e.visible_to_customer).map(e => ({ stage: e.stage, note: e.note, at: e.created_at })) };
     },
     photoUrl(path){ return path || null; },
+    async rrPayments(from, to){ const st = dget(); return clone((st.rrPayments || []).filter(p => (!from || p.paid_on >= from) && (!to || p.paid_on <= to)).sort((a, b) => b.paid_on.localeCompare(a.paid_on))); },
+    async addRrPayment(p){ const st = dget(); st.rrPayments = st.rrPayments || []; st.rrPayments.push({ id: uuid(), paid_on: p.paid_on, amount: +p.amount, method: p.method, reference: p.reference, note: p.note, created_by: st.staff && st.staff.name, created_at: new Date().toISOString() }); dsave(st); },
+    async deleteRrPayment(id){ const st = dget(); if(!st.staff || st.staff.role !== "owner") throw new Error("Only an owner can delete a payment"); st.rrPayments = (st.rrPayments || []).filter(p => p.id !== id); dsave(st); },
     async payouts(from, to){
       const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and the partner can see payouts");
       const a = new Date(from + "T00:00:00"), b = new Date(to + "T23:59:59");
@@ -449,6 +464,8 @@
     getStatus: (...a) => impl.getStatus(...a),
     photoUrl: (...a) => impl.photoUrl(...a),
     payouts: (...a) => impl.payouts(...a),
+    rrPayments: (...a) => impl.rrPayments(...a), addRrPayment: (...a) => impl.addRrPayment(...a), deleteRrPayment: (...a) => impl.deleteRrPayment(...a),
+    deleteOrder: (...a) => impl.deleteOrder(...a),
     auctionOrders: (...a) => impl.auctionOrders(...a),
     getPricing: (...a) => impl.getPricing(...a),
     linkRestoredRarity: (...a) => impl.linkRestoredRarity(...a),

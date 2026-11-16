@@ -15,9 +15,13 @@
     { title: "Base Repair", price: 35, desc: "Minor corner or edge lifting, dents or gouges under ¼ inch, and creases under ½ inch." },
     { title: "Major Repair", price: 50, desc: "Major corner or edge lifting, delamination or layer separation, dents or gouges over ¼ inch, and creases over ½ inch." }
   ];
+  // Card-value surcharge on repairs, same rules as restoredraritytcg.com: % of the card's value, rounded up to the
+  // dollar; nothing up to the first limit; above the last limit Restored Rarity gives a custom quote.
+  const DEFAULT_SURCHARGE = [{ upTo: 250, rate: 0 }, { upTo: 1500, rate: 10 }, { upTo: 3000, rate: 12 }];
   const CACHE = "pbg.rrRepairPrices";
-  let REPAIRS = DEFAULT_REPAIRS, loadedAt = null;
-  try{ const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if(c && Array.isArray(c.list) && c.list.length){ REPAIRS = c.list; loadedAt = c.at; } }catch(_){}
+  let REPAIRS = DEFAULT_REPAIRS, SURCHARGE = DEFAULT_SURCHARGE, loadedAt = null;
+  try{ const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if(c && Array.isArray(c.list) && c.list.length){ REPAIRS = c.list; loadedAt = c.at; if(Array.isArray(c.surcharge) && c.surcharge.length) SURCHARGE = c.surcharge; } }catch(_){}
+  const cleanSurcharge = a => (Array.isArray(a) ? a : []).map(x => ({ upTo: num(x && x.upTo), rate: num(x && x.rate) })).filter(x => x.upTo > 0).sort((a, b) => a.upTo - b.upTo);
   const num = v => +String(v == null ? "" : v).replace(/[^0-9.]/g, "") || 0;
   const discount = () => { const d = +cfg().pbgDiscount; return isFinite(d) && cfg().pbgDiscount != null ? d : 10; };
   const r2 = n => Math.round(n * 100) / 100;
@@ -27,6 +31,7 @@
     try{
       const r = await fetch(`${cfg().supabaseUrl}/rest/v1/rpc/site_get`, { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: "{}" });
       const c = r.ok ? await r.json() : null;
+      let sur = cleanSurcharge(c && c.prices && c.prices.surcharge);
       let list = ((c && c.prices && c.prices.services) || [])
         .filter(x => x && x.type === "repair" && x.title)
         .map(x => ({ title: String(x.title).trim(), price: num(x.price), desc: String(x.desc || "").trim() }))
@@ -37,20 +42,32 @@
         const html = await fetch(site, { cache: "no-store" }).then(r => r.ok ? r.text() : "");
         const block = (html.match(/let REPAIR_TIERS = \[([\s\S]*?)\n\];/) || [])[1] || "";
         const field = (o, k) => { const m = o.match(new RegExp(k + ':"((?:[^"\\\\]|\\\\.)*)"')); return m ? JSON.parse('"' + m[1] + '"') : ""; };
+        if(!sur.length){ const sb = (html.match(/surcharge:\s*(\[[^\]]*\])/) || [])[1]; if(sb) sur = cleanSurcharge([...sb.matchAll(/upTo:\s*([0-9.]+)\s*,\s*rate:\s*([0-9.]+)/g)].map(m => ({ upTo: m[1], rate: m[2] }))); }
         for(const o of block.match(/\{[^{}]*\}/g) || []){
           const title = field(o, "title"), price = num(field(o, "price"));
           if(title && price > 0) list.push({ title, price, desc: field(o, "desc") });
         }
       }
-      if(list.length){ REPAIRS = list; loadedAt = new Date().toISOString(); try{ localStorage.setItem(CACHE, JSON.stringify({ list, at: loadedAt })); }catch(_){} }
+      if(sur.length) SURCHARGE = sur;
+      if(list.length){ REPAIRS = list; loadedAt = new Date().toISOString(); try{ localStorage.setItem(CACHE, JSON.stringify({ list, at: loadedAt, surcharge: SURCHARGE })); }catch(_){} }
     }catch(e){ console.warn("Restored Rarity prices not loaded; using the last saved list", e); }
     return REPAIRS;
   }
-  // Price for one repair type: Restored Rarity's posted price, and the PBG customer price after the discount.
-  function quote(title){
+  // Value surcharge for a card: null = over the last limit (custom quote)
+  function surchargeFor(value){
+    const v = num(value), t = SURCHARGE; if(!v || !t.length) return 0;
+    if(v > t[t.length - 1].upTo) return null;
+    const row = t.find(x => v <= x.upTo); return row && row.rate ? Math.ceil(v * row.rate / 100) : 0;
+  }
+  // Price for one repair: Restored Rarity's posted price + the card-value surcharge = Restored Rarity's total;
+  // the PBG discount comes off that total.
+  function quote(title, value){
     const t = REPAIR_SERVICE[title] || title, r = REPAIRS.find(x => x.title === t);
     if(!r) return null;
-    return { title: r.title, desc: r.desc, list: r.price, pbg: r2(r.price * (1 - discount() / 100)), off: discount() };
+    const sur = surchargeFor(value), rate = (SURCHARGE.find(x => num(value) <= x.upTo) || {}).rate || 0;
+    if(sur === null) return { title: r.title, desc: r.desc, base: r.price, list: null, surcharge: null, rate: null, pbg: null, off: discount(), custom: true, over: SURCHARGE[SURCHARGE.length - 1].upTo };
+    const list = r2(r.price + sur);
+    return { title: r.title, desc: r.desc, base: r.price, surcharge: sur, rate, list, pbg: r2(list * (1 - discount() / 100)), off: discount(), custom: false };
   }
   const label = c => !c ? "" : c.repairType === "unsure" ? "Not sure, needs a look" : (REPAIR_SERVICE[c.repairType] || c.repairType || "Repair");
   const SHOP = "PBG Cards & Collectibles HTX, 25170 I-45 N, Unit 9, Spring, TX 77386";
@@ -84,7 +101,7 @@
       `Service: ${serviceOf(c)}`,
       c.value ? `NM value: $${String(c.value).replace(/^\$/, "")}` : "",
       c.repairNote ? `Needs: ${c.repairNote}` : "",
-      c.repairPrice ? `PBG customer price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} list price). Customer was shown this estimate at drop-off.` : `PBG customer: ${discount()}% off the posted repair price.`,
+      c.repairPrice ? `PBG customer price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `: $${(+c.repairBase).toFixed(2)} repair + $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""}). Customer was shown this estimate at drop-off.` : `PBG customer: ${discount()}% off the total (repair + value surcharge). ${c.repairCustom ? "Card value is over the surcharge table: custom quote." : ""}`,
       `Dropped off at PBG, ticket ${s.ticket}` + (s.grader && s.grader !== "None" ? ` (PBG is also submitting it to ${s.grader} ${s.tier || ""})` : "")
     ].filter(Boolean).join("\n");
 
@@ -131,5 +148,5 @@
     return { code: s.rrPortal.code, link: `${base}#t=${s.rrPortal.token}` };
   }
 
-  window.RR = { pushRepairs, REPAIR_SERVICE, loadPrices, quote, label, repairs: () => REPAIRS, loadedAt: () => loadedAt, discount };
+  window.RR = { pushRepairs, REPAIR_SERVICE, loadPrices, quote, surchargeFor, label, repairs: () => REPAIRS, surcharge: () => SURCHARGE, loadedAt: () => loadedAt, discount };
 })();

@@ -203,3 +203,8 @@ Every order also gets PBG's own steps: Checked in, With Restored Rarity and Prep
 - Removes the order, cards, photos, signature, history and email log. A short record (ticket, customer, who, when, why, and a copy of the order without photos) is kept in the `deleted_orders` table.
 - It doesn't delete a linked Restored Rarity repair submission; delete that in the Restored Rarity portal.
 - Database: run `supabase/update-2026-11-16-delete-order.sql` once.
+
+## 14. Restored Rarity repairs and payouts
+- **Repair estimates on the iPad**: Restored Rarity's repair price + its card-value surcharge (same table as restoredraritytcg.com: none up to $250, 10% of value to $1,500, 12% to $3,000, custom quote above), then 10% off the total for PBG customers. Prices and the surcharge table load live from restoredraritytcg.com each time the app opens.
+- **Paid to Restored Rarity** (staff portal > Payouts, owners and Restored Rarity): earned vs paid by year and month, what's owed now, and a log of payments. Owners and Restored Rarity can log payments; only an owner can delete one.
+- Database: run `supabase/update-2026-11-16-rr-payments.sql` once.

@@ -13,10 +13,10 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116c"></script>
-<script src="../terms.js?v=20261116a"></script>
+<script src="../pbg-api.js?v=20261116d"></script>
+<script src="../terms.js?v=20261116d"></script>
 <script src="cardsearch.js?v=20261116a"></script>
-<script src="rr-push.js?v=20261116b"></script>
+<script src="rr-push.js?v=20261116d"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -276,7 +276,7 @@ const houseName = h => h === "Best fit" ? "the best-fit auction house" : h;
 const CATEGORIES = ["Pokémon", "Sports", "Other TCG"];
 const REPAIR_TYPES = { base: "Base repair", major: "Major repair", unsure: "Not sure, needs a look" };
 // Repair label and PBG estimate for one card (prices from restoredraritytcg.com, minus the PBG discount)
-const repairText = c => RR.label(c) + (c.repairPrice ? ` · est. ${money(c.repairPrice)}` : "");
+const repairText = c => RR.label(c) + (c.repairPrice ? ` · est. ${money(c.repairPrice)}` : c.repairCustom ? " · custom quote" : "");
 const repairEstimate = cards => (n => Math.round(n * 100) / 100)(cards.filter(c => c.repair && c.repairPrice).reduce((a, c) => a + (+c.repairPrice || 0), 0));
 const IF_LOW = [
   ["call",   "Call me first"],
@@ -646,9 +646,9 @@ function cardEditor(idx){
         <div class="grid" style="margin-top:6px">
           <label class="toggle"><input type="checkbox" id="clean" ${c.clean?"checked":""}><div><b>Prep</b><span>Cleaning and grading prep by a restoration professional who knows each grading company's requirements.</span></div><span class="amt">${money(settings.prepPrice)}</span></label>
           <label class="toggle"><input type="checkbox" id="eval" ${c.eval?"checked":""}><div><b>Full evaluation with magnification <small style="color:var(--red);font-weight:800">PBG partner rate</small></b><span>A professional pre-grader checks centering, corners, edges and surface under magnification before it ships.</span></div><span class="amt">${money(settings.evalPrice)}</span></label>
-          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity <small style="color:var(--red);font-weight:800">${RR.discount()}% off for PBG customers</small></b><span>Sent to Restored Rarity as its own repair submission. Restored Rarity confirms the price after inspecting the card and bills it directly; nothing is done without your OK.</span></div><span class="amt">From ${money(Math.min(...RR.repairs().map(r => RR.quote(r.title).pbg)))}</span></label>
+          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity <small style="color:var(--red);font-weight:800">${RR.discount()}% off for PBG customers</small></b><span>Sent to Restored Rarity as its own repair submission. Restored Rarity confirms the price after inspecting the card and bills it directly; nothing is done without your OK.</span></div><span class="amt">${RR.discount()}% off</span></label>
           <div id="rnWrap" ${c.repair?"":"hidden"} class="grid g2">
-            <label class="f" style="grid-column:1/-1">Repair type<select class="t" id="repairType">${RR.repairs().map(r => { const q = RR.quote(r.title), sel = c.repairType === r.title || RR.REPAIR_SERVICE[c.repairType] === r.title; return `<option value="${esc(r.title)}" ${sel?"selected":""}>${esc(r.title)}: ${money(q.pbg)} (was ${money(q.list)})</option>`; }).join("")}<option value="unsure" ${c.repairType==="unsure"?"selected":""}>Not sure, needs a look (Restored Rarity quotes it)</option></select></label>
+            <label class="f" style="grid-column:1/-1">Repair type<select class="t" id="repairType">${RR.repairs().map(r => { const sel = c.repairType === r.title || RR.REPAIR_SERVICE[c.repairType] === r.title; return `<option value="${esc(r.title)}" ${sel?"selected":""}>${esc(r.title)}: ${money(r.price)} + value surcharge</option>`; }).join("")}<option value="unsure" ${c.repairType==="unsure"?"selected":""}>Not sure, needs a look (Restored Rarity quotes it)</option></select></label>
             <label class="f" style="grid-column:1/-1">What needs fixing?<input class="t" id="repairNote" value="${esc(c.repairNote)}" placeholder="e.g. light crease, bent corner"></label>
             <div id="repairEst" class="notice" style="grid-column:1/-1;font-size:14px;background:#EFE9FB;color:#3B2A78;margin:0"></div>
           </div>
@@ -660,10 +660,14 @@ function cardEditor(idx){
     $("#cat", m).onclick = e => { const b = e.target.closest("button"); if(!b) return; c.category = b.textContent; [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", x===b));
       $("#nameLbl", m).firstChild.textContent = (c.category==="Sports" ? "Player" : "Card name") + " "; $("#name", m).placeholder = c.category==="Sports" ? "e.g. Shohei Ohtani" : "e.g. Charizard ex"; };
     $("#repair", m).onchange = e => $("#rnWrap", m).hidden = !e.target.checked;
-    const repairEst = () => { const q = RR.quote($("#repairType", m).value), el = $("#repairEst", m);
-      el.innerHTML = q ? `<b>${esc(q.title)}: about ${money(q.pbg)}</b> with the PBG ${q.off}% discount (Restored Rarity's price is ${money(q.list)}).${q.desc ? "<br>" + esc(q.desc) : ""}<br><small>An estimate from Restored Rarity's current prices. They confirm the final price after inspecting the card, before any work starts.</small>`
-        : `Restored Rarity will look at the card and send a quote before any work starts. PBG customers get ${RR.discount()}% off Restored Rarity's posted repair prices.`; };
-    $("#repairType", m).onchange = repairEst; repairEst();
+    const repairEst = () => { const v = $("#value", m).value, q = RR.quote($("#repairType", m).value, v), el = $("#repairEst", m);
+      const foot = `<br><small>An estimate from Restored Rarity's current prices. The surcharge is based on the card's value with normal wear, not counting the damage being repaired. Restored Rarity confirms the final price after inspecting the card, before any work starts.</small>`;
+      if(!q){ el.innerHTML = `Restored Rarity will look at the card and send a quote before any work starts. PBG customers get ${RR.discount()}% off Restored Rarity's total (repair plus any card-value surcharge).`; return; }
+      if(q.custom){ el.innerHTML = `<b>${esc(q.title)}: custom quote.</b> Cards valued over ${money(q.over)} get a custom repair quote from Restored Rarity. PBG customers still get ${q.off}% off that quote.${foot}`; return; }
+      const lines = [`${esc(q.title)}: ${money(q.base)}`, q.surcharge ? `Card-value surcharge (${q.rate}% of ${money(+v)}, rounded up): ${money(q.surcharge)}` : `Card-value surcharge: none${+v ? "" : " (enter the declared value above)"}`,
+        `Restored Rarity total: ${money(q.list)}`, `PBG discount (${q.off}% off the total): −${money(q.list - q.pbg)}`];
+      el.innerHTML = `<b>Estimated repair price: ${money(q.pbg)}</b><br>${lines.join("<br>")}${q.desc ? "<br><br>" + esc(q.desc) : ""}${foot}`; };
+    $("#repairType", m).onchange = repairEst; $("#value", m).addEventListener("input", repairEst); repairEst();
     const gemNote = () => { const v = +$("#value", m).value || 0, el = $("#gemNote", m), f = (sub.grader && sub.grader !== "None") ? gemFeeFor(v) : 0;
       el.hidden = !f; if(f) el.textContent = `Gem service +${money(f)}, includes a magnetic case`;
       const mg = $("#mag", m); if(mg){ mg.disabled = !!f; if(f) mg.checked = false; $("#magSub", m).textContent = f ? "Already included with the gem service on this card." : `A magnetic case sized for your ${sub.grader} slab, handed to you with the slab at pickup. Only with a grading submission.`; } };
@@ -680,7 +684,9 @@ function cardEditor(idx){
       c.mag = !!($("#mag", m) && $("#mag", m).checked);
       if(standalone){ c.slabGrade = $("#slabGrade", m).value.trim(); c.cert = $("#cert", m).value.trim(); c.clean = c.eval = c.repair = false; }
       c.repairType = $("#repairType", m).value;
-      { const q = c.repair ? RR.quote(c.repairType) : null; c.repairList = q ? q.list : null; c.repairPrice = q ? q.pbg : null; c.repairOff = q ? q.off : null; }
+      { const q = c.repair ? RR.quote(c.repairType, c.value) : null;
+        c.repairBase = q ? q.base : null; c.repairSurcharge = q ? q.surcharge : null; c.repairList = q ? q.list : null;
+        c.repairPrice = q && !q.custom ? q.pbg : null; c.repairOff = q ? q.off : null; c.repairCustom = !!(q && q.custom); }
       const errs = [];
       $("#name", m).classList.toggle("bad", !c.name); if(!c.name) errs.push(c.category==="Sports" ? "the player" : "the card name");
       const badVal = c.value === "" || isNaN(+c.value) || +c.value < 0; $("#value", m).classList.toggle("bad", badVal); if(badVal) errs.push("a declared value (0 is OK)");

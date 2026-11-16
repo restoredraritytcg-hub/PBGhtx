@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116c"></script>
+<script src="../pbg-api.js?v=20261116d"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -690,14 +690,86 @@ function drawAuctions(){
 }
 
 /* ---------- payouts ---------- */
+/* ---------- Restored Rarity payout tracker: earned vs paid, by year ---------- */
+async function rrLedger(){
+  const box = $("#ledger"); if(!box) return;
+  const now = new Date(), thisYear = now.getFullYear(), year = rrLedger.year || thisYear, pad = n => String(n).padStart(2, "0");
+  const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`, owner = me.role === "owner";
+  box.innerHTML = `<div class="panel" style="margin-top:16px"><div class="empty">Loading the Restored Rarity payout log…</div></div>`;
+  let earnedAll, paidAll;
+  try{ [earnedAll, paidAll] = await Promise.all([PBG.payouts("2020-01-01", today), PBG.rrPayments()]); }
+  catch(e){ box.innerHTML = `<div class="panel" style="margin-top:16px"><h2>Paid to Restored Rarity</h2><p style="margin-top:8px">${esc(e.message)}</p></div>`; return; }
+  const yr = d => +String(d).slice(0, 4), mo = d => +String(d).slice(5, 7);
+  const chiDay = t => new Date(t).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });   // YYYY-MM-DD in Central time
+  const earned = earnedAll.map(r => ({ day: chiDay(r.created_at), amt: +r.rr_share || 0 }));
+  const paid = paidAll.map(p => ({ ...p, amt: +p.amount || 0 }));
+  const sum = a => a.reduce((x, r) => x + r.amt, 0);
+  const eY = earned.filter(r => yr(r.day) === year), pY = paid.filter(p => yr(p.paid_on) === year);
+  const owed = sum(earned) - sum(paid);
+  const years = [...new Set([thisYear, ...earned.map(r => yr(r.day)), ...paid.map(p => yr(p.paid_on))])].sort((a, b) => b - a);
+  let runE = sum(earned.filter(r => yr(r.day) < year)), runP = sum(paid.filter(p => yr(p.paid_on) < year));
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const e = sum(eY.filter(r => mo(r.day) === i + 1)), p = sum(pY.filter(x => mo(x.paid_on) === i + 1));
+    runE += e; runP += p; return { m: i, e, p, paidYtd: sum(pY.filter(x => mo(x.paid_on) <= i + 1)), bal: runE - runP };
+  }).filter(r => year < thisYear || r.m <= now.getMonth());
+  const mName = i => new Date(2000, i, 1).toLocaleString("en-US", { month: "long" });
+  const METHODS = ["Zelle", "Cash", "Check", "PayPal", "Bank transfer", "Venmo", "Other"];
+  box.innerHTML = `<div class="panel" style="margin-top:16px;border-color:#8E6CF0">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between"><h2>Paid to Restored Rarity</h2>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px">Year<select class="t" id="lYear" style="width:auto">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select></label></div>
+    <div class="kv" style="margin:14px 0 0">
+      <div class="panel"><span>Earned in ${year}</span><b style="font-size:24px">${money(sum(eY))}</b><small style="display:block;color:var(--steel)">Restored Rarity's share of ${eY.length} order${eY.length === 1 ? "" : "s"}</small></div>
+      <div class="panel"><span>Paid in ${year}</span><b style="font-size:24px">${money(sum(pY))}</b><small style="display:block;color:var(--steel)">${pY.length} payment${pY.length === 1 ? "" : "s"} logged</small></div>
+      <div class="panel" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>Owed right now</span><b style="font-size:24px">${money(Math.max(owed, 0))}</b><small style="display:block;color:var(--steel)">${owed < -0.004 ? `Paid ${money(-owed)} ahead` : "All orders ever, minus all payments"}</small></div>
+    </div>
+    <div class="table" style="margin-top:16px">
+      <div class="row h" style="grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;cursor:default"><span>Month</span><span>Earned</span><span>Paid</span><span>Paid so far in ${year}</span><span>Owed at month end</span></div>
+      ${months.map(r => `<div class="row" style="grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;cursor:default"><span>${mName(r.m)}</span><span>${money(r.e)}</span><span>${money(r.p)}</span><span>${money(r.paidYtd)}</span><span>${money(Math.max(r.bal, 0))}</span></div>`).join("") || `<div class="empty">Nothing yet.</div>`}
+    </div>
+    <h3 style="margin-top:20px">Log a payment</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;margin-top:8px">
+      <label class="f">Date paid<input class="t" type="date" id="lDate" value="${today}"></label>
+      <label class="f">Amount<input class="t" id="lAmt" inputmode="decimal" placeholder="${owed > 0 ? (+owed).toFixed(2) : "0.00"}"></label>
+      <label class="f">Method<select class="t" id="lMethod">${METHODS.map(m => `<option>${m}</option>`).join("")}</select></label>
+      <label class="f">Reference or note<input class="t" id="lRef" placeholder="e.g. Zelle confirmation, check #, which orders"></label>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ink btn-sm" id="lAdd">Log payment</button><button class="btn btn-line btn-sm" id="lCsv">Copy ${year} payments as CSV</button></div>
+    <div class="table" style="margin-top:16px">
+      <div class="row h" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>Date</span><span>Amount</span><span>Method</span><span>Reference</span><span>Logged by</span><span></span></div>
+      ${pY.length ? pY.map(p => `<div class="row" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amt)}</b></span><span>${esc(p.method || "")}</span><span>${esc([p.reference, p.note].filter(Boolean).join(" · "))}</span><span>${esc(p.created_by || "")}</span><span>${owner ? `<button class="btn btn-line btn-sm" data-delpay="${esc(p.id)}">Delete</button>` : ""}</span></div>`).join("") : `<div class="empty">No payments logged in ${year}.</div>`}
+    </div>
+    <p style="color:var(--steel);font-size:13px;margin-top:10px">Earned = Restored Rarity's share of each PBG order (graded cards, evaluations, preps and gem services), counted on the check-in date. Repairs are billed by Restored Rarity directly and aren't included. Owners and Restored Rarity can log payments; only an owner can delete one.</p>
+  </div>`;
+  $("#lYear").onchange = e => { rrLedger.year = +e.target.value; rrLedger(); };
+  $("#lAdd").onclick = async () => {
+    const amount = +String($("#lAmt").value).replace(/[^0-9.]/g, ""), paid_on = $("#lDate").value;
+    if(!(amount > 0)){ toast("Enter the amount paid."); return; } if(!paid_on){ toast("Enter the date it was paid."); return; }
+    if(!await confirmBox("Log this payment?", `${money(amount)} by ${$("#lMethod").value} on ${fmtDate(paid_on + "T12:00:00")}.`, "Log payment")) return;
+    $("#lAdd").disabled = true;
+    try{ await PBG.addRrPayment({ paid_on, amount, method: $("#lMethod").value, reference: $("#lRef").value.trim() }); toast("Payment logged"); rrLedger.year = +paid_on.slice(0, 4); rrLedger(); }
+    catch(e){ toast(e.message); $("#lAdd").disabled = false; }
+  };
+  box.querySelectorAll("[data-delpay]").forEach(b => b.onclick = async () => {
+    const p = pY.find(x => x.id === b.dataset.delpay);
+    if(!await confirmBox("Delete this payment?", `${money(p.amt)} on ${fmtDate(p.paid_on + "T12:00:00")}. It comes off the paid total.`, "Delete")) return;
+    try{ await PBG.deleteRrPayment(p.id); toast("Payment deleted"); rrLedger(); }catch(e){ toast(e.message); }
+  });
+  $("#lCsv").onclick = async () => {
+    const lines = [["Date paid","Amount","Method","Reference","Logged by"]].concat(pY.slice().reverse().map(p => [p.paid_on, p.amt.toFixed(2), p.method || "", [p.reference, p.note].filter(Boolean).join(" · "), p.created_by || ""]));
+    lines.push(["Total " + year, sum(pY).toFixed(2), "", "", ""]);
+    try{ await navigator.clipboard.writeText(lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n")); toast("CSV copied"); }catch(e){ toast("Couldn't copy here"); }
+  };
+}
+
 async function payouts(){
   const now = new Date(), pad = n => String(n).padStart(2, "0");
   const first = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`, today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   const from = payouts.from || first, to = payouts.to || today, partner = me.role === "partner";
   $("#app").innerHTML = `<div class="wrap"><div class="top"><h1>Payouts</h1>
     <label class="f">From<input class="t" type="date" id="pf" value="${from}"></label><label class="f">To<input class="t" type="date" id="pt" value="${to}"></label>
-    <button class="btn btn-ink" id="pgo" style="align-self:end">Show</button></div><div id="pbody"><div class="empty">Loading…</div></div></div>`;
+    <button class="btn btn-ink" id="pgo" style="align-self:end">Show</button></div><div id="ledger"></div><h2 style="margin:26px 0 12px">Orders in these dates</h2><div id="pbody"><div class="empty">Loading…</div></div></div>`;
   $("#pgo").onclick = () => { payouts.from = $("#pf").value; payouts.to = $("#pt").value; payouts(); };
+  rrLedger();
   let rows; try{ rows = await PBG.payouts(from, to); }catch(e){ $("#pbody").innerHTML = `<div class="panel">${esc(e.message)}</div>`; return; }
   const sum = k => rows.reduce((a, r) => a + (+r[k] || 0), 0);
   const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share"), g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
