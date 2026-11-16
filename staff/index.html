@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116a"></script>
+<script src="../pbg-api.js?v=20261116c"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -321,10 +321,10 @@ async function teamPage(){
     try{ await PBG.teamAdd(n, r, p); toast(n + " added"); teamPage(); }catch(e){ toast(e.message); $("#nAdd").disabled = false; }
   };
 }
-function prompt2(title){
+function prompt2(title, opt = {}){
   return new Promise(res => {
     const sc = document.createElement("div"); sc.className = "scrim";
-    sc.innerHTML = `<div class="modal"><h2>${esc(title)}</h2><input class="t" id="pp" inputmode="numeric" maxlength="6" autocomplete="off" style="margin-top:14px"><div class="acts"><button class="btn btn-line" data-x>Cancel</button><button class="btn btn-red" data-ok>Save</button></div></div>`;
+    sc.innerHTML = `<div class="modal"><h2>${esc(title)}</h2><input class="t" id="pp" ${opt.text ? 'maxlength="200" autocapitalize="characters"' : 'inputmode="numeric" maxlength="6"'} autocomplete="off" style="margin-top:14px"><div class="acts"><button class="btn btn-line" data-x>Cancel</button><button class="btn btn-red" data-ok>Save</button></div></div>`;
     document.body.appendChild(sc); const inp = sc.querySelector("#pp"); inp.focus();
     const done = v => { sc.remove(); res(v); };
     sc.querySelector("[data-x]").onclick = () => done(null); sc.querySelector("[data-ok]").onclick = () => done(inp.value.trim());
@@ -519,7 +519,21 @@ async function detail(id){
         <p style="margin-top:12px;font-size:13px;color:var(--steel)">${o.terms_version ? `Signed terms version ${esc(o.terms_version)}${o.signed_at ? " on " + esc(new Date(o.signed_at).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })) : ""}. ${o.ownership_ack ? "Confirmed ownership and check-in photos. " : ""}${o.pickup_policy_ack ? "Acknowledged pickup policy." : ""} ${o.terms_text ? `<a href="#" id="viewTerms">View the exact terms they signed</a>` : ""}` : "Signed before terms versions were saved (original terms)."}</p>
         ${o.signature_url ? `<p style="margin-top:12px;font-size:13px;color:var(--steel)">Signed by ${esc(o.signed_name)}</p><img src="${esc(o.signature_url)}" alt="Customer signature" style="max-width:100%;border:1px solid var(--line);border-radius:8px">` : ""}
       </div>
+      ${me.role === "owner" ? `<div class="panel" style="border-color:#E8B4B4"><h2>Delete order</h2>
+        <p style="margin-top:8px;font-size:14px;color:var(--steel)">For test tickets and mistakes. Removes the order, its cards, photos, signature, history and email log for good; a short record of the deletion is kept. ${o.rr_code ? `It does <b>not</b> delete Restored Rarity submission ${esc(o.rr_code)}; delete that in the Restored Rarity portal.` : ""}</p>
+        <button class="btn btn-sm" id="delOrder" style="margin-top:10px;background:#B3261E;color:#fff">Delete ${esc(o.ticket)}</button></div>` : ""}
     </div></div></div>`;
+
+  const del = $("#delOrder"); if(del) del.onclick = async () => {
+    const typed = await prompt2(`Type ${o.ticket} to delete it`, { text: true });
+    if(typed == null) return;
+    if(typed.trim().toUpperCase() !== String(o.ticket).toUpperCase()){ toast("The ticket number didn't match. Nothing was deleted."); return; }
+    const why = await prompt2("Why are you deleting it? (e.g. test order)", { text: true });
+    if(why == null) return;
+    del.disabled = true; del.textContent = "Deleting…";
+    try{ await PBG.deleteOrder(o.id, why); toast(o.ticket + " deleted"); location.hash = ""; route(); }
+    catch(e){ toast(e.message); del.disabled = false; del.textContent = "Delete " + o.ticket; }
+  };
 
   const setStage = async (code, btn) => {
     const st = s.list.find(x => x.code === code) || { label: $("#pick").selectedOptions[0] ? $("#pick").selectedOptions[0].textContent : code };

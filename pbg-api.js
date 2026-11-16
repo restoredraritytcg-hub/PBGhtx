@@ -218,6 +218,16 @@
       const { error } = await sb.rpc("set_order_stage", { p_order: orderId, p_stage: code, p_note: note || null, p_visible: visible !== false, p_email: email === undefined ? null : !!email });
       if(error) throw new Error(error.message);
     },
+    // Owner only. Removes the order's photos and signature, then the order (cards, history and email log go with it).
+    async deleteOrder(id, reason){
+      const { data: o, error: e1 } = await sb.from("orders").select("signature_path, cards(front_path, back_path)").eq("id", id).single();
+      if(e1) throw new Error(e1.message);
+      const photos = (o.cards || []).flatMap(c => [c.front_path, c.back_path]).filter(p => p && !p.startsWith("data:"));
+      const { error } = await sb.rpc("delete_order", { p_order: id, p_reason: reason || null });
+      if(error) throw new Error(/function .*delete_order|schema cache/i.test(error.message) ? "Deleting needs a database update. Run supabase/update-2026-11-16-delete-order.sql in Supabase." : error.message);
+      if(photos.length) await sb.storage.from("card-photos").remove(photos).catch(() => {});
+      if(o.signature_path) await sb.storage.from("signatures").remove([o.signature_path]).catch(() => {});
+    },
     async updateOrder(id, patch){ const { error } = await sb.from("orders").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id); if(error) throw new Error(error.message); },
     async updateCard(id, patch){ const { error } = await sb.from("cards").update(patch).eq("id", id); if(error) throw new Error(error.message); },
     async getStatus(token){
@@ -371,6 +381,7 @@
     async listOrders(){ const st = dget(); return clone(st.orders.filter(o => st.staff && (st.staff.role !== "partner" || o.has_prep)).map(o => ({ ...o, card_count: o.cards.length }))); },
     async auctionOrders(){ const st = dget(); if(!st.staff || !["owner","staff"].includes(st.staff.role)) throw new Error("Only PBG staff can see auctions"); return clone(st.orders.filter(o => o.auction_house)); },
     async getOrder(id){ const o = dget().orders.find(x => x.id === id); if(!o) throw new Error("Order not found"); return clone(o); },
+    async deleteOrder(id){ const st = dget(); if(!st.staff || st.staff.role !== "owner") throw new Error("Only an owner can delete orders"); st.orders = st.orders.filter(x => x.id !== id); dsave(st); },
     async setStage(id, code, note, visible, email){
       const st = dget(), o = st.orders.find(x => x.id === id);
       if(st.staff && st.staff.role === "partner" && !["at_partner","prep_done"].includes(code)) throw new Error("Partners can only set prep stages");
