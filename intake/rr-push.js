@@ -27,10 +27,21 @@
     try{
       const r = await fetch(`${cfg().supabaseUrl}/rest/v1/rpc/site_get`, { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: "{}" });
       const c = r.ok ? await r.json() : null;
-      const list = ((c && c.prices && c.prices.services) || [])
+      let list = ((c && c.prices && c.prices.services) || [])
         .filter(x => x && x.type === "repair" && x.title)
         .map(x => ({ title: String(x.title).trim(), price: num(x.price), desc: String(x.desc || "").trim() }))
         .filter(x => x.price > 0);
+      // No price list saved in the Restored Rarity portal yet: read the prices built into restoredraritytcg.com itself
+      if(!list.length){
+        const site = (cfg().portalUrl || "https://restoredraritytcg.com/portal/view.html").replace(/portal\/.*$/, "");
+        const html = await fetch(site, { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+        const block = (html.match(/let REPAIR_TIERS = \[([\s\S]*?)\n\];/) || [])[1] || "";
+        const field = (o, k) => { const m = o.match(new RegExp(k + ':"((?:[^"\\\\]|\\\\.)*)"')); return m ? JSON.parse('"' + m[1] + '"') : ""; };
+        for(const o of block.match(/\{[^{}]*\}/g) || []){
+          const title = field(o, "title"), price = num(field(o, "price"));
+          if(title && price > 0) list.push({ title, price, desc: field(o, "desc") });
+        }
+      }
       if(list.length){ REPAIRS = list; loadedAt = new Date().toISOString(); try{ localStorage.setItem(CACHE, JSON.stringify({ list, at: loadedAt })); }catch(_){} }
     }catch(e){ console.warn("Restored Rarity prices not loaded; using the last saved list", e); }
     return REPAIRS;
