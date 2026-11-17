@@ -422,7 +422,7 @@
       const a = new Date(from + "T00:00:00"), b = new Date(to + "T23:59:59");
       return st.orders.filter(o => { const d = new Date(o.created_at); return d >= a && d <= b; }).sort((x, y) => x.created_at.localeCompare(y.created_at))
         .map(o => ({ ticket: o.ticket, created_at: o.created_at, grader: o.grader, tier: o.tier, current_stage: o.current_stage, graded_count: o.graded_count || 0,
-          eval_count: o.eval_count || 0, prep_count: o.prep_count || 0, gem_count: o.gem_count || 0, gem_fees: o.gem_fees || 0, mag_count: o.mag_count || 0, mag_fees: o.mag_fees || 0, total: o.total, tax: o.tax || 0, grader_fees: o.grader_fees || 0, pbg_share: o.pbg_share || 0, rr_share: o.rr_share || 0 }));
+          eval_count: o.eval_count || 0, prep_count: o.prep_count || 0, gem_count: o.gem_count || 0, gem_fees: o.gem_fees || 0, mag_count: o.mag_count || 0, mag_fees: o.mag_fees || 0, total: o.total, tax: o.tax || 0, grader_fees: o.grader_fees || 0, pbg_share: o.pbg_share || 0, rr_share: o.rr_share || 0, repair_paid: o.repair_paid || null, repair_paid_at: o.repair_paid_at || null }));
     },
     async getSite(){ return clone(siteDemo()); },
     async saveSite(key, value){
