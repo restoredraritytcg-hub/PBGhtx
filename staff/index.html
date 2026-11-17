@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116d"></script>
+<script src="../pbg-api.js?v=20261116e"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -169,6 +169,20 @@ function confirmBox(title, body, yes="Confirm"){
     document.body.appendChild(s); $("[data-n]", s).onclick = () => { s.remove(); res(false); }; $("[data-y]", s).onclick = () => { s.remove(); res(true); }; });
 }
 
+/* Update notice: the portal can stay open for days, so check every 5 minutes for a new version and offer a refresh. */
+(() => {
+  const buildOf = html => (html.match(/\.js\?v=\w+/g) || []).join("|"), BUILD = buildOf(document.documentElement.outerHTML);
+  setInterval(async () => {
+    try{
+      const html = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+      if(!html || buildOf(html) === BUILD || document.getElementById("updBar")) return;
+      const b = document.createElement("div"); b.id = "updBar";
+      b.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99;background:#141414;color:#fff;padding:12px 16px;border-radius:12px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:15px";
+      b.innerHTML = `A new version of the staff portal is ready. <button class="btn btn-sm" style="background:#E31B23;color:#fff">Refresh</button>`;
+      b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b);
+    }catch(_){}
+  }, 5 * 60 * 1000);
+})();
 let me = null, stages = [], orders = [], view = { group: "open", grader: "all", q: "" }, selected = new Set();
 
 /* stage helpers */

@@ -13,10 +13,10 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116d"></script>
-<script src="../terms.js?v=20261116d"></script>
+<script src="../pbg-api.js?v=20261116e"></script>
+<script src="../terms.js?v=20261116e"></script>
 <script src="cardsearch.js?v=20261116a"></script>
-<script src="rr-push.js?v=20261116d"></script>
+<script src="rr-push.js?v=20261116e"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -1232,6 +1232,18 @@ async function loadPricing(){
 
 /* ---------------- start ---------------- */
 step = "welcome";
+/* Auto-update: the iPad stays open all day, so check every 5 minutes for a new version of the app and reload
+   when nobody is mid check-in (on the welcome screen, no scrim open). */
+const buildOf = html => (html.match(/\.js\?v=\w+/g) || []).join("|");
+const BUILD = buildOf(document.documentElement.outerHTML);
+let idleSince = Date.now(); ["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => idleSince = Date.now(), true));
+setInterval(async () => {
+  try{
+    const html = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+    if(!html || buildOf(html) === BUILD) return;
+    if(step === "welcome" && !document.querySelector(".scrim") && Date.now() - idleSince > 60000) location.reload();
+  }catch(_){}
+}, 5 * 60 * 1000);
 RR.loadPrices();   // Restored Rarity repair prices, refreshed every time the app opens
 PBG.init().catch(e => toast(e.message)).then(loadPricing).finally(() => { render(); syncAll(); });
 if("serviceWorker" in navigator && location.protocol === "https:"){ navigator.serviceWorker.register("sw.js").catch(() => {}); }
