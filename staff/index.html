@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116g"></script>
+<script src="../pbg-api.js?v=20261116h"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -450,7 +450,7 @@ async function detail(id){
             ${partner ? "" : `<div><span>Customer paid in total</span><b>${money(+o.total + +o.repair_paid)}</b></div>`}`
           : rep.amt && !partner ? `<div><span>Customer total with repairs</span><b>${rep.allQuoted ? "" : "About "}${money(+o.total + rep.amt)}</b></div>` : ""}` : ""}
           ${me.role === "owner" ? `<div><span>Owed to ${o.grader === "None" ? "grader" : esc(PBG.graderName(o.grader))}</span><b>${money(o.grader_fees)}</b></div><div><span>PBG share</span><b>${money(o.pbg_share)}</b></div>` : ""}
-          ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity share</span><b>${money(o.rr_share)}</b></div>` : ""}
+          ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity share</span><b>${money((+o.rr_share || 0) + (+o.repair_paid || 0))}</b>${+o.repair_paid ? `<small style="display:block;color:var(--steel);font-size:12px">${money(o.rr_share)} services + ${money(o.repair_paid)} repairs collected</small>` : ""}</div>` : ""}
         </div>
         ${rep.cards && !partner ? `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">${o.repair_paid
             ? (me.role === "owner" ? `<button class="btn btn-line btn-sm" id="repUndo">Undo repair payment</button>` : "")
@@ -752,8 +752,10 @@ async function rrLedger(){
   }).filter(r => year < thisYear || r.m <= now.getMonth());
   const mName = i => new Date(2000, i, 1).toLocaleString("en-US", { month: "long" });
   const METHODS = ["Zelle", "Cash", "Check", "PayPal", "Bank transfer", "Venmo", "Other"];
-  box.innerHTML = `<div class="panel" style="margin-top:16px;border-color:#8E6CF0">
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between"><h2>Paid to Restored Rarity</h2>
+  let open = true; try{ open = localStorage.getItem("pbg.ledgerOpen") !== "0"; }catch(_){}
+  box.innerHTML = `<details class="panel" id="ledgerBox" style="margin-top:16px;border-color:#8E6CF0" ${open ? "open" : ""}>
+    <summary style="cursor:pointer;list-style:none;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2>▸ Paid to Restored Rarity</h2><span style="font-weight:700">Owed now: ${money(Math.max(owed, 0))}</span></summary>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:10px">
       <label class="f" style="flex-direction:row;align-items:center;gap:8px">Year<select class="t" id="lYear" style="width:auto">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select></label></div>
     <div class="kv" style="margin:14px 0 0">
       <div class="panel"><span>Earned in ${year}</span><b style="font-size:24px">${money(sum(eY))}</b><small style="display:block;color:var(--steel)">Share of ${eY.filter(r => !r.repair).length} order${eY.filter(r => !r.repair).length === 1 ? "" : "s"}${eY.some(r => r.repair) ? ` + ${money(sum(eY.filter(r => r.repair)))} repairs collected at PBG` : ""}</small></div>
@@ -776,8 +778,10 @@ async function rrLedger(){
       <div class="row h" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>Date</span><span>Amount</span><span>Method</span><span>Reference</span><span>Logged by</span><span></span></div>
       ${pY.length ? pY.map(p => `<div class="row" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amt)}</b></span><span>${esc(p.method || "")}</span><span>${esc([p.reference, p.note].filter(Boolean).join(" · "))}</span><span>${esc(p.created_by || "")}</span><span>${owner ? `<button class="btn btn-line btn-sm" data-delpay="${esc(p.id)}">Delete</button>` : ""}</span></div>`).join("") : `<div class="empty">No payments logged in ${year}.</div>`}
     </div>
-    <p style="color:var(--steel);font-size:13px;margin-top:10px">Earned = Restored Rarity's share of each PBG order (graded cards, evaluations, preps and gem services), counted on the check-in date, plus any repair payments PBG collected for Restored Rarity (100% owed to Restored Rarity), counted on the day collected. Owners and Restored Rarity can log payments; only an owner can delete one.</p>
-  </div>`;
+    <p style="color:var(--steel);font-size:13px;margin-top:10px" data-end>Earned = Restored Rarity's share of each PBG order (graded cards, evaluations, preps and gem services), counted on the check-in date, plus any repair payments PBG collected for Restored Rarity (100% owed to Restored Rarity), counted on the day collected. Owners and Restored Rarity can log payments; only an owner can delete one.</p>
+  </details>`;
+  const lb = $("#ledgerBox"), arrow = () => { lb.querySelector("summary h2").textContent = (lb.open ? "▾ " : "▸ ") + "Paid to Restored Rarity"; };
+  arrow(); lb.addEventListener("toggle", () => { arrow(); try{ localStorage.setItem("pbg.ledgerOpen", lb.open ? "1" : "0"); }catch(_){} });
   $("#lYear").onchange = e => { rrLedger.year = +e.target.value; rrLedger(); };
   $("#lAdd").onclick = async () => {
     const amount = +String($("#lAmt").value).replace(/[^0-9.]/g, ""), paid_on = $("#lDate").value;
@@ -810,20 +814,20 @@ async function payouts(){
   rrLedger();
   let rows; try{ rows = await PBG.payouts(from, to); }catch(e){ $("#pbody").innerHTML = `<div class="panel">${esc(e.message)}</div>`; return; }
   const sum = k => rows.reduce((a, r) => a + (+r[k] || 0), 0);
-  const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share"), g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
+  const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share") + sum("repair_paid"), rep: sum("repair_paid"), g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
   const byGrader = {}; rows.forEach(r => { if(r.grader === "None") return; byGrader[r.grader] = (byGrader[r.grader] || 0) + (+r.grader_fees || 0); });
   $("#pbody").innerHTML = `
     <div class="kv" style="margin:0 0 16px">
       ${partner ? "" : `<div class="panel"><span>Customer sales</span><b style="font-size:24px">${money(tot.total)}</b><small style="display:block;color:var(--steel)">incl. ${money(tot.tax)} tax</small></div>
       <div class="panel"><span>Owed to grading companies</span><b style="font-size:24px">${money(tot.fees)}</b><small style="display:block;color:var(--steel)">${Object.entries(byGrader).map(([g, v]) => esc(PBG.graderName(g)) + " " + money(v)).join(", ") || "None"}</small></div>
       <div class="panel"><span>PBG share</span><b style="font-size:24px">${money(tot.pbg)}</b><small style="display:block;color:var(--steel)">incl. ${tot.mg} mag slab case${tot.mg===1?"":"s"} (${money(tot.mgf)})</small></div>`}
-      <div class="panel" style="border-color:#8E6CF0"><span>Restored Rarity share</span><b style="font-size:24px">${money(tot.rr)}</b><small style="display:block;color:var(--steel)">${tot.g} graded cards, ${tot.e} full evaluations, ${tot.p} preps, ${tot.gm} gem services</small></div>
+      <div class="panel" style="border-color:#8E6CF0"><span>Restored Rarity share</span><b style="font-size:24px">${money(tot.rr)}</b><small style="display:block;color:var(--steel)">${tot.g} graded cards, ${tot.e} full evaluations, ${tot.p} preps, ${tot.gm} gem services${tot.rep ? `, plus ${money(tot.rep)} in repairs collected at PBG` : ""}</small></div>
     </div>
     <div class="table">
       <div class="row h" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default"><span>Ticket</span><span>Date</span><span>Company</span><span>Graded</span><span>Evals / preps / gems</span><span>Mags</span><span>${partner ? "" : "Grader fees"}</span><span>${partner ? "" : "PBG"}</span><span>Restored Rarity</span></div>
       ${rows.length ? rows.map(r => `<div class="row" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default">
         <span class="tk">${esc(r.ticket)}</span><span>${fmtDate(r.created_at)}</span><span>${r.grader === "None" ? "Prep only" : esc(PBG.graderName(r.grader) + " " + (r.tier || ""))}</span>
-        <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money(r.rr_share)}</b></span></div>`).join("")
+        <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money((+r.rr_share || 0) + (+r.repair_paid || 0))}</b>${+r.repair_paid ? `<small style="display:block;color:var(--steel);font-size:11px">incl. ${money(r.repair_paid)} repairs</small>` : ""}</span></div>`).join("")
         : `<div class="empty">No orders in these dates.</div>`}
     </div>
     <div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-line btn-sm" id="pcsv">Copy as CSV</button></div>
@@ -831,9 +835,9 @@ async function payouts(){
   PBG.getPricing().then(p => { const r = p && p.rules; if(!r) return; const sp = r.split, m = n => "$" + (+n).toFixed(0);
     $("#splitNote").textContent = `Current split: ${m(sp.pbgPerGrade)} PBG and ${m(sp.rrPerGrade)} Restored Rarity per graded card (${m(r.markup)} handling); full evaluation ${m(r.evalPrice)} (PBG ${m(sp.pbgPerEval)}, Restored Rarity ${m(r.evalPrice - sp.pbgPerEval)}); prep ${m(r.prepPrice)} (PBG ${m(sp.pbgPerPrep)}, Restored Rarity ${m(r.prepPrice - sp.pbgPerPrep)}); gem service ${r.gemTiers.map(t => m(t.fee) + " over " + m(t.over)).join(", ")} (PBG ${sp.pbgGemPct}%, Restored Rarity ${100 - sp.pbgGemPct}%); magnetic slab case ${m(r.magPrice ?? 15)} (PBG ${sp.pbgMagPct ?? 100}%${(sp.pbgMagPct ?? 100) < 100 ? ", Restored Rarity " + (100 - sp.pbgMagPct) + "%" : ""}). The order system calculates the shares when each order comes in, and past orders keep theirs. Sales tax isn't part of the split.`; }).catch(() => {});
   $("#pcsv").onclick = async () => {
-    const head = ["Ticket","Date","Company","Level","Graded","Full evals","Preps","Gem services","Mag cases"].concat(partner ? ["Restored Rarity"] : ["Total","Tax","Grader fees","PBG","Restored Rarity"]);
+    const head = ["Ticket","Date","Company","Level","Graded","Full evals","Preps","Gem services","Mag cases"].concat(partner ? ["Restored Rarity services","Repairs collected"] : ["Total","Tax","Grader fees","PBG","Restored Rarity services","Repairs collected"]);
     const lines = [head].concat(rows.map(r => [r.ticket, r.created_at.slice(0,10), r.grader, r.tier || "", r.graded_count, r.eval_count, r.prep_count, r.gem_count || 0, r.mag_count || 0]
-      .concat(partner ? [r.rr_share] : [r.total, r.tax, r.grader_fees, r.pbg_share, r.rr_share])));
+      .concat(partner ? [r.rr_share, r.repair_paid || 0] : [r.total, r.tax, r.grader_fees, r.pbg_share, r.rr_share, r.repair_paid || 0])));
     const csv = lines.map(l => l.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
     try{ await navigator.clipboard.writeText(csv); toast("CSV copied"); }catch(e){ toast("Couldn't copy here"); }
   };
