@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="pbg-config.js?v=20261116a"></script>
-<script src="pbg-api.js?v=20261116e"></script>
+<script src="pbg-api.js?v=20261116f"></script>
 <style>
 :root{--red:#E31B23;--panel:#151515;--line:#2E2E2E;--smoke:#B4B4B4;--green:#2BD46A}
 *{box-sizing:border-box}
@@ -143,7 +143,7 @@ async function load(){
       <div><h3>${esc(c.name)}</h3><p class="meta">${esc([c.year, c.set_name, c.card_number && "#" + c.card_number, c.variant].filter(Boolean).join(", "))}</p>
         <div class="chips">${c.gem ? '<span class="chip" style="background:#5A4600">Gem service</span>' : ""}${c.eval ? '<span class="chip">Full evaluation</span>' : ""}${c.clean ? '<span class="chip">Prep</span>' : ""}${c.repair ? '<span class="chip">Repair with Restored Rarity</span>' : ""}</div>
         ${c.eval_result ? `<p class="eval"><b>Evaluation:</b> ${esc(c.eval_result)}</p>` : ""}
-        ${c.repair ? `<p class="eval">Repairs are handled by Restored Rarity TCG, who send you their own quote and tracking link.</p>` : ""}
+        ${c.repair ? `<p class="eval">${+c.repair_quote > 0 ? `<b>Repair quote: $${(+c.repair_quote).toFixed(2)}</b> (PBG 10% discount included). ` : ""}Repairs are handled by Restored Rarity TCG, who bill them separately and send you their own tracking link.</p>` : ""}
         ${c.card_status ? `<p class="eval">${esc(c.card_status)}</p>` : ""}
         ${c.grade ? `<span class="grade">${esc(c.grade)}</span>${c.cert_number ? `<p class="meta" style="margin-top:6px">Cert #${esc(c.cert_number)}</p>` : ""}` : ""}
         ${c.hammer_price ? `<p class="eval"><b>Sold for $${(+c.hammer_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> (hammer price, yours in full)${c.auction_lot_url && /^https:\/\//.test(c.auction_lot_url) ? ` · <a href="${esc(c.auction_lot_url)}" style="color:#fff">See the lot</a>` : ""}</p>` : ""}

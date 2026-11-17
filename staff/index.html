@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116e"></script>
+<script src="../pbg-api.js?v=20261116f"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -421,6 +421,8 @@ async function detail(id){
   const link = PBG.statusUrl(o.public_token);
   const smsBody = `Hi ${o.customer_first}, it's PBG Cards & Collectibles. Your ticket ${o.ticket} is now at: ${s.cur.label}. Track it here: ${link}`;
   const lastPhase = l => ({ shop: "PBG", partner: "Restored Rarity", ship: "Shipping", grader: PBG.graderName(o.grader), auction: "Auction" }[l]);
+  // Restored Rarity repairs: the quote Restored Rarity entered, otherwise the check-in estimate saved on the card
+  const rep = (() => { const rc = o.cards.filter(c => c.repair); let amt = 0, quoted = 0; rc.forEach(c => { if(+c.repair_quote > 0){ amt += +c.repair_quote; quoted++; } else { const m = String(c.repair_note || "").match(/est\. \$([0-9.]+)/); if(m) amt += +m[1]; } }); return { cards: rc.length, amt: Math.round(amt * 100) / 100, allQuoted: rc.length > 0 && quoted === rc.length }; })();
   const hammer = o.cards.reduce((a, c) => a + (+c.hammer_price || 0), 0);
   let prevPhase = null;
 
@@ -442,7 +444,9 @@ async function detail(id){
           ${partner ? "" : `<div><span>Pay the customer by</span><b>${esc(o.payout_method || "Not set")}${o.payout_details ? ": " + esc(o.payout_details) : ""}</b></div>
           <div><span>Hammer total, owed to customer</span><b>${money(hammer)}</b></div>`}` : ""}
           ${o.if_low_grade ? `<div><span>If evaluation is low</span><b>${esc({call:"Call customer first",submit:"Submit anyway",return:"Return ungraded"}[o.if_low_grade] || o.if_low_grade)}</b></div>` : ""}
-          ${partner ? "" : `<div><span>Total</span><b>${money(o.total)} ${o.payment_when === "pickup" ? "due at pickup" : "paid"}</b></div>`}
+          ${partner ? "" : `<div><span>${rep.amt ? "PBG total" : "Total"}</span><b>${money(o.total)} ${o.payment_when === "pickup" ? "due at pickup" : "paid"}</b></div>`}
+          ${rep.cards ? `<div><span>Restored Rarity repairs (${rep.cards})</span><b>${rep.amt ? (rep.allQuoted ? "" : "About ") + money(rep.amt) : "Not priced yet"}</b><small style="display:block;color:var(--steel);font-size:12px">${rep.allQuoted ? "Restored Rarity's quote" : "Estimate with PBG 10% off"}, billed by Restored Rarity</small></div>
+          ${rep.amt && !partner ? `<div><span>Customer total with repairs</span><b>${rep.allQuoted ? "" : "About "}${money(+o.total + rep.amt)}</b></div>` : ""}` : ""}
           ${me.role === "owner" ? `<div><span>Owed to ${o.grader === "None" ? "grader" : esc(PBG.graderName(o.grader))}</span><b>${money(o.grader_fees)}</b></div><div><span>PBG share</span><b>${money(o.pbg_share)}</b></div>` : ""}
           ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity share</span><b>${money(o.rr_share)}</b></div>` : ""}
         </div>
