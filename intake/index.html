@@ -13,10 +13,10 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261116g"></script>
+<script src="../pbg-api.js?v=20261119a"></script>
 <script src="../terms.js?v=20261116e"></script>
 <script src="cardsearch.js?v=20261116a"></script>
-<script src="rr-push.js?v=20261116e"></script>
+<script src="rr-push.js?v=20261119a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -451,7 +451,7 @@ function render(){
 function go(s){ step = s; render(); }
 async function refreshPills(){
   $("#setupPill").hidden = settingsSaved();
-  const pend = (await DB.all()).filter(s => !s.synced || (s.cards.some(c => c.repair) && !s.rrSynced)).length;
+  const pend = (await DB.all()).filter(s => !s.synced || (hasPartnerWork(s) && !s.rrSynced)).length;
   const q = $("#queuePill");
   const who = await PBG.currentStaff().catch(() => null);
   if(PBG.mode === "live" && !who){ q.hidden = false; q.className = "pill warn"; q.textContent = "Not signed in"; }
@@ -896,13 +896,16 @@ let doneTimer;
 function done(){
   setSteps(null);
   const t = sub.totals, c = sub.customer;
+  const workWords = [sub.cards.some(x => x.clean) && "prep", sub.cards.some(x => x.eval) && "pre-grade evaluation", sub.cards.some(x => x.repair) && "repair"].filter(Boolean);
+  const workList = workWords.length < 2 ? (workWords[0] || "") : workWords.length === 2 ? workWords.join(" and ") : workWords.slice(0, -1).join(", ") + ", and " + workWords[workWords.length - 1];
+  const partnerCards = sub.cards.filter(x => x.clean || x.eval || x.repair).length;
   $("#app").innerHTML = `<main><div class="panel ticket">
     <p>Thanks, ${esc(c.first)}. Your ticket number is</p>
     <div class="num">${esc(sub.ticket)}</div>
     <p>${t.count} card${t.count===1?"":"s"} ${sub.auction && sub.auction.mode === "standalone" ? `checked in for auction at ${esc(houseName(sub.auction.house))}` : sub.grader==="None" ? (sub.cards.every(x => x.repair && !x.clean && !x.eval) ? "checked in for a Restored Rarity repair" : "checked in for prep") : `for ${esc(sub.grader)} ${esc(sub.tier)}`}.${t.total > 0 ? ` Total ${money(t.total)}${sub.payment.when==="pickup" ? ", due at pickup" : ", paid"}.` : " Nothing is due at PBG."}</p>
     ${c.email ? `<p style="margin-top:6px">A copy of this receipt, with a link to your customer portal, is on its way to <b>${esc(c.email)}</b>.</p>` : ""}
     <p style="margin-top:6px">${sub.auction ? `Your cards go to ${esc(houseName(sub.auction.house))}${sub.auction.mode === "after_grading" ? " after grading" : ""}. You get 100% of the hammer price, paid by ${esc(sub.auction.payout === "PayPal" ? "PayPal" : "wire transfer")} once the auction house pays us.` : `We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.`}</p>
-    ${sub.cards.some(x => x.repair) ? `<p class="notice" style="margin-top:16px;text-align:left">Your repair request is going to Restored Rarity. You'll get a confirmation from them with your own Restored Rarity link, and they'll quote the repair before doing any work.</p>` : ""}
+    ${hasPartnerWork(sub) ? `<p class="notice" style="margin-top:16px;text-align:left">Your ${workList} ${partnerCards === 1 ? "card is" : "cards are"} opened as a Restored Rarity order in your name, marked as coming from PBG, and tied to ticket ${esc(sub.ticket)}.${sub.cards.some(x => x.repair) ? " You'll get a confirmation from Restored Rarity, and they'll quote the repair before doing any work." : ""}</p>` : ""}
     <div class="qr"><div class="code" id="qr"></div><p><b>Track your order</b><br>Scan this code to see your cards move through each grading stage. The link is printed on your receipt too.</p></div>
     <div id="syncBadge"></div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px">
@@ -967,18 +970,20 @@ async function drawQR(el, text){
 
 /* ---------------- sync to the PBG order system (Supabase) ---------------- */
 async function syncOne(s){
-  if(s.synced) return;
-  try{
-    await PBG.init();
-    if(PBG.mode === "live" && !(await PBG.currentStaff())) throw new Error("The iPad isn't signed in. Open Staff > Settings and sign in.");
-    if(!s.publicToken) s.publicToken = PBG.newToken();
-    if(!s.synced){ await PBG.submitOrder(s); s.synced = true; }
-    s.syncError = null;
-  }catch(e){ s.syncError = String(e.message || e); }
-  // Repair cards also go to Restored Rarity's website as their own submission
-  if(s.cards.some(c => c.repair) && !s.rrSynced){
-    try{ const r = await RR.pushRepairs(s); s.rrCode = r.code; s.rrLink = r.link; s.rrSynced = true; s.rrError = null;
-      if(s.synced) await PBG.linkRestoredRarity(s.ticket, r.code).catch(() => {}); }
+  const needsRr = hasPartnerWork(s) && !s.rrSynced;
+  if(s.synced && !needsRr) return;
+  if(!s.synced){
+    try{
+      await PBG.init();
+      if(PBG.mode === "live" && !(await PBG.currentStaff())) throw new Error("The iPad isn't signed in. Open Staff > Settings and sign in.");
+      if(!s.publicToken) s.publicToken = PBG.newToken();
+      await PBG.submitOrder(s); s.synced = true; s.syncError = null;
+    }catch(e){ s.syncError = String(e.message || e); }
+  }
+  // Prep, pre-grade evaluation and repair cards become one Restored Rarity order, tied to this ticket.
+  if(needsRr){
+    try{ await PBG.init(); const r = await RR.pushRepairs(s); s.rrCode = r.code; s.rrLink = r.link; s.rrSynced = true; s.rrError = null;
+      if(s.synced && r.code) await PBG.linkRestoredRarity(s.ticket, r.code).catch(() => {}); }
     catch(e){ s.rrError = String(e.message || e); }
   }
   await DB.put(s);
@@ -986,13 +991,13 @@ async function syncOne(s){
 let syncing = false;
 async function syncAll(){
   if(syncing || !navigator.onLine) return; syncing = true;
-  try{ for(const s of (await DB.all()).filter(x => !x.synced || (x.cards.some(c => c.repair) && !x.rrSynced))) await syncOne(s); } finally { syncing = false; }
+  try{ for(const s of (await DB.all()).filter(x => !x.synced || (hasPartnerWork(x) && !x.rrSynced))) await syncOne(s); } finally { syncing = false; }
   refreshPills();
 }
 window.addEventListener("online", syncAll);
 $("#queuePill").style.cursor = "pointer";
 $("#queuePill").onclick = async () => {
-  const list = (await DB.all()).filter(x => !x.synced || (x.cards.some(c => c.repair) && !x.rrSynced));
+  const list = (await DB.all()).filter(x => !x.synced || (hasPartnerWork(x) && !x.rrSynced));
   if(!list.length) return;
   modal(`<h2>Waiting to upload</h2><p style="margin-top:8px;color:var(--steel)">These check-ins are saved on this iPad but haven't reached the PBG order system yet.</p>
     <div style="margin-top:14px;display:grid;gap:10px">${list.map(x => `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left"><b>${esc(x.ticket)}</b> ${esc((x.customer && x.customer.first) || "")} ${esc((x.customer && x.customer.last) || "")}<br><small style="color:var(--steel)">${esc(x.syncError || x.rrError || "Not tried yet")}</small></div>`).join("")}</div>
@@ -1038,7 +1043,7 @@ async function staff(tab){
 }
 
 function staffSubs(all){
-  const pend = all.filter(s => !s.synced || (s.cards.some(c => c.repair) && !s.rrSynced)).length;
+  const pend = all.filter(s => !s.synced || (hasPartnerWork(s) && !s.rrSynced)).length;
   $("#staffBody").innerHTML = `
     ${PBG.mode === "demo" ? `<div class="notice">Demo mode. Submissions stay on this iPad until Supabase is connected in pbg-config.js.</div>` : ""}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
@@ -1077,7 +1082,7 @@ function viewSub(s){
       <div class="tags">${x.clean?'<span class="tag rr">Prep</span>':""}${x.eval?'<span class="tag rr">Full evaluation</span>':""}${x.repair?`<span class="tag rr">Repair: ${esc(repairText(x))}${x.repairNote ? " · " + esc(x.repairNote) : ""}</span>`:""}</div></div><span></span></div>`).join("")}</div>
     ${s.signature ? `<p style="margin-top:12px;color:var(--steel);font-size:14px">Signed by ${esc(s.signedName)}</p><img src="${s.signature}" alt="Customer signature" style="max-width:320px;border:1px solid var(--line);border-radius:8px">` : ""}
     ${s.syncError && !s.synced ? `<div class="notice" style="margin-top:12px">Last upload attempt: ${esc(s.syncError)}</div>` : ""}
-    ${s.cards.some(c => c.repair) ? `<div class="notice" style="margin-top:12px;background:#EFE9FB;color:#3B2A78">${s.rrSynced ? `Repair cards sent to Restored Rarity as <b>${esc(s.rrCode)}</b>.` : `Repair cards not sent to Restored Rarity yet${s.rrError ? ": " + esc(s.rrError) : ""}. It retries automatically.`}</div>` : ""}
+    ${hasPartnerWork(s) ? `<div class="notice" style="margin-top:12px;background:#EFE9FB;color:#3B2A78">${s.rrSynced ? `Restored Rarity order <b>${esc(s.rrCode)}</b> is tied to PBG ticket <b>${esc(s.ticket)}</b>.` : `Not sent to Restored Rarity yet${s.rrError ? ": " + esc(s.rrError) : ""}. It retries automatically.`}</div>` : ""}
     <div class="acts"><button class="btn btn-line" data-p>Print receipt</button><button class="btn btn-navy" data-x>Close</button></div>`,
   (m, close) => { $("[data-x]", m).onclick = close; $("[data-p]", m).onclick = () => printReceipt(s); });
 }

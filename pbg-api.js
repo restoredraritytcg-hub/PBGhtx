@@ -196,7 +196,7 @@
     },
     async listOrders(){
       const { data, error } = await sb.from("orders")
-        .select("id,ticket,public_token,customer_first,customer_last,phone,email,grader,tier,has_prep,current_stage,created_at,updated_at,total,payment_when,grader_order_no,ready_at,final_notice_at,pickup_deadline,abandoned_at,auction_house,auction_mode,cards(count)")
+        .select("id,ticket,public_token,customer_first,customer_last,phone,email,grader,tier,has_prep,current_stage,created_at,updated_at,total,payment_when,grader_order_no,ready_at,final_notice_at,pickup_deadline,abandoned_at,auction_house,auction_mode,rr_code,cards(count)")
         .order("created_at", { ascending: false }).limit(1000);
       if(error) throw error;
       return data.map(o => ({ ...o, card_count: o.cards && o.cards[0] ? o.cards[0].count : 0 }));
@@ -248,6 +248,40 @@
       const { error } = await sb.from("rr_payments").insert({ paid_on: p.paid_on, amount: +p.amount, method: p.method || null, reference: p.reference || null, note: p.note || null, created_by: st && st.name || null });
       if(error) throw new Error(error.message); },
     async deleteRrPayment(id){ const { error } = await sb.from("rr_payments").delete().eq("id", id); if(error) throw new Error(error.message); },
+    // Repair money PBG collected for Scott. The total is calculated in the database
+    // and is not added into the services share. Writes go through RPCs that check his code.
+    repairDbError(error){
+      const m = error && error.message || "";
+      if(/repair_payout/i.test(m) && /schema cache|does not exist|could not find/i.test(m))
+        return "Repair payouts need a database update. Run supabase/update-2026-11-19-repair-payouts.sql in Supabase, then set Scott's code (HANDOFF.md).";
+      return m;
+    },
+    async repairPayoutSummary(){
+      const { data, error } = await sb.rpc("repair_payout_summary");
+      if(error) throw new Error(this.repairDbError(error));
+      return data || { repairs_due: 0, payouts_recorded: 0, still_owed: 0 };
+    },
+    async repairPayouts(){
+      const { data, error } = await sb.from("repair_payouts").select("id,paid_on,amount,note,created_by,created_at,updated_at,updated_by").order("paid_on", { ascending: false }).order("created_at", { ascending: false });
+      if(error) throw new Error(this.repairDbError(error));
+      return data;
+    },
+    async checkRepairPayoutCode(code){
+      const { error } = await sb.rpc("repair_payout_unlock", { p_code: code });
+      if(error) throw new Error(this.repairDbError(error));
+    },
+    async addRepairPayout(code, p){
+      const { error } = await sb.rpc("repair_payout_add", { p_code: code, p_amount: +p.amount, p_paid_on: p.paid_on, p_note: p.note || null });
+      if(error) throw new Error(this.repairDbError(error));
+    },
+    async updateRepairPayout(code, p){
+      const { error } = await sb.rpc("repair_payout_update", { p_code: code, p_id: p.id, p_amount: +p.amount, p_paid_on: p.paid_on, p_note: p.note || null });
+      if(error) throw new Error(this.repairDbError(error));
+    },
+    async deleteRepairPayout(code, id){
+      const { error } = await sb.rpc("repair_payout_delete", { p_code: code, p_id: id });
+      if(error) throw new Error(this.repairDbError(error));
+    },
     async getSite(){
       const { data, error } = await sb.from("site_content").select("key,value,updated_at,updated_by");
       if(error) throw new Error(error.message);
@@ -273,7 +307,9 @@
   };
 
   /* =================== DEMO (sample data in this browser) =================== */
-  const DKEY = "pbg.demo.v15";
+  const DKEY = "pbg.demo.v16";
+  // Demo only. The live code is a hash in Supabase, set by Scott. This string does nothing once Supabase is connected.
+  const DEMO_REPAIR_CODE = "demo-repairs";
   const ph = (bg, fg, label) => "data:image/svg+xml;utf8," + encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 350"><rect width="250" height="350" rx="14" fill="${fg}"/><rect x="12" y="12" width="226" height="326" rx="8" fill="${bg}"/><circle cx="125" cy="150" r="60" fill="${fg}" opacity=".85"/><rect x="28" y="262" width="194" height="44" rx="6" fill="#fff"/><text x="125" y="291" font-family="Arial" font-weight="700" font-size="18" text-anchor="middle" fill="#111">${label}</text></svg>`);
   function seed(){
@@ -284,8 +320,8 @@
       ready_at: (events.find(e => e[0] === "ready") || [])[1] || null,
       current_stage: events[events.length-1][0] });
     return [
-      mk({ ticket: "PBG-261021-K7Q", customer_first: "Marcus", customer_last: "Lee", phone: "832-555-0142", contact_pref: "Text", grader: "PSA", tier: "Value", grade_each: 25, has_prep: true, total: 105, payment_when: "dropoff", created_at: d(19), grader_order_no: "PSA 24418873", received_by: "Jordan" },
-        [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", declared_value: 350, clean: true, eval: true, eval_result: "Strong 10 candidate. Centering 55/45.", front_path: ph("#E25822","#F3D27A","Charizard ex") },
+      mk({ ticket: "PBG-261021-K7Q", customer_first: "Marcus", customer_last: "Lee", phone: "832-555-0142", contact_pref: "Text", grader: "PSA", tier: "Value", grade_each: 25, has_prep: true, total: 105, payment_when: "dropoff", created_at: d(19), grader_order_no: "PSA 24418873", received_by: "Jordan", rr_code: "RR-3101", repair_paid: 54, repair_paid_at: d(10), repair_paid_method: "Card" },
+        [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", declared_value: 350, clean: true, eval: true, repair: true, repair_quote: 54, repair_note: "Base repair (est. $54.00 with PBG 10% off)", eval_result: "Strong 10 candidate. Centering 55/45.", front_path: ph("#E25822","#F3D27A","Charizard ex") },
          { category: "Pokémon", name: "Umbreon VMAX", year: "2021", set_name: "Evolving Skies", card_number: "215", declared_value: 450, clean: true, eval: true, eval_result: "9 likely. Light whitening on back corner.", front_path: ph("#1F2A44","#F3D27A","Umbreon VMAX") },
          { category: "Pokémon", name: "Pikachu VMAX", year: "2020", set_name: "Vivid Voltage", card_number: "188", declared_value: 120, front_path: ph("#F7D02C","#C21F32","Pikachu VMAX") }],
         [["checked_in", d(19)], ["at_partner", d(18)], ["prep_done", d(15), "All three cleaned. Evaluations attached to each card."], ["shipped_to_grader", d(14)], ["psa_arrived", d(11)], ["psa_order_prep", d(9)], ["psa_research_id", d(6)], ["psa_grading", d(2)]]),
@@ -293,7 +329,7 @@
         [{ category: "Sports", name: "Shohei Ohtani", year: "2018", set_name: "Topps Chrome", card_number: "150", variant: "Rookie", declared_value: 400, grade: "CGC 9.5", cert_number: "4183920011", front_path: ph("#0B3D91","#E31B23","Ohtani RC") },
          { category: "Sports", name: "Victor Wembanyama", year: "2023", set_name: "Prizm", card_number: "136", variant: "Silver", declared_value: 8500, grade: "CGC 10 Pristine", cert_number: "4183920012", front_path: ph("#111","#C0C0C0","Wembanyama") }],
         [["checked_in", d(38)], ["shipped_to_grader", d(36)], ["cgc_arrived", d(33)], ["cgc_received", d(31)], ["cgc_scheduled", d(27)], ["cgc_grading", d(20)], ["cgc_qc", d(12)], ["cgc_shipped", d(5)], ["ready", d(2), "Grades are in. Come by any day 11 to 7."]]),
-      mk({ ticket: "PBG-261106-R2T", customer_first: "Devon", customer_last: "Price", phone: "713-555-0110", contact_pref: "Text", grader: "BGS", tier: "Express", grade_each: 30, has_prep: true, total: 50, payment_when: "dropoff", created_at: d(3), received_by: "Alex" },
+      mk({ ticket: "PBG-261106-R2T", customer_first: "Devon", customer_last: "Price", phone: "713-555-0110", contact_pref: "Text", grader: "BGS", tier: "Express", grade_each: 30, has_prep: true, total: 50, payment_when: "dropoff", created_at: d(3), received_by: "Alex", rr_code: "RR-3103" },
         [{ category: "Sports", name: "C.J. Stroud", year: "2023", set_name: "Donruss Optic", card_number: "201", variant: "Rated Rookie", declared_value: 200, clean: true, eval: true, front_path: ph("#03202F","#A71930","Stroud RR") }],
         [["checked_in", d(3)], ["at_partner", d(2)]]),
       mk({ ticket: "PBG-261109-W8P", customer_first: "Sam", customer_last: "Ortiz", phone: "832-555-0177", contact_pref: "Text", grader: "TAG", tier: "Standard", grade_each: 25, has_prep: false, total: 75, payment_when: "dropoff", created_at: d(0.1), received_by: "Jordan" },
@@ -301,8 +337,8 @@
          { category: "Sports", name: "Derek Jeter", year: "1993", set_name: "SP", card_number: "279", variant: "Foil Rookie", declared_value: 300, front_path: ph("#0C2340","#C4CED4","Jeter SP") },
          { category: "Sports", name: "Hakeem Olajuwon", year: "1986", set_name: "Fleer", card_number: "82", declared_value: 200, front_path: ph("#CE1141","#FDB927","Olajuwon") }],
         [["checked_in", d(0.1)]]),
-      mk({ ticket: "PBG-261028-H5N", customer_first: "Priya", customer_last: "Shah", phone: "346-555-0123", contact_pref: "Email", email: "priya@example.com", grader: "None", tier: null, grade_each: 0, has_prep: true, total: 30, payment_when: "dropoff", created_at: d(12), received_by: "Alex" },
-        [{ category: "Pokémon", name: "Lugia", year: "2000", set_name: "Neo Genesis", card_number: "9", variant: "Holo", declared_value: 500, eval: true, eval_result: "Solid 7. Edge wear top left. Not worth PSA Regular.", front_path: ph("#5B7DB1","#E8E8E8","Lugia Holo") },
+      mk({ ticket: "PBG-261028-H5N", customer_first: "Priya", customer_last: "Shah", phone: "346-555-0123", contact_pref: "Email", email: "priya@example.com", grader: "None", tier: null, grade_each: 0, has_prep: true, total: 30, payment_when: "dropoff", created_at: d(12), received_by: "Alex", rr_code: "RR-3102", repair_paid: 120, repair_paid_at: d(4), repair_paid_method: "Cash" },
+        [{ category: "Pokémon", name: "Lugia", year: "2000", set_name: "Neo Genesis", card_number: "9", variant: "Holo", declared_value: 500, eval: true, repair: true, repair_quote: 120, repair_note: "Major repair (est. $120.00 with PBG 10% off)", eval_result: "Solid 7. Edge wear top left. Not worth PSA Regular.", front_path: ph("#5B7DB1","#E8E8E8","Lugia Holo") },
          { category: "Pokémon", name: "Typhlosion", year: "2000", set_name: "Neo Genesis", card_number: "17", variant: "Holo", declared_value: 120, eval: true, eval_result: "8 possible after cleaning.", front_path: ph("#D35400","#2C3E50","Typhlosion") }],
         [["checked_in", d(12)], ["at_partner", d(11)], ["prep_done", d(6), "Evaluations done. See notes on each card."]]),
       mk({ ticket: "PBG-260712-Z4C", customer_first: "Tyler", customer_last: "Nguyen", phone: "936-555-0188", contact_pref: "Text", email: "tyler@example.com", mailing_address: "1418 Example Ln, Spring, TX 77386", pickup_policy_ack: true, grader: "PSA", tier: "Value", grade_each: 25, has_prep: false, total: 75, payment_when: "pickup", created_at: d(120), received_by: "Jordan", grader_order_no: "PSA 23991020" },
@@ -332,7 +368,10 @@
       pbg_share: r2(g * 12 + ev * 2 + pr * 2 + gemFees * 0.7), rr_share: r2(g * 8 + ev * 15 + pr * 5 + gemFees * 0.3), total: r2((g ? (fee + 20) * g : 0) + ev * 17 + pr * 7 + gemFees), tax: 0 });
     return o;
   }
-  function dload(){ try{ const v = JSON.parse(localStorage.getItem(DKEY)); if(v) return v; }catch(e){} const s = { orders: seed().map(priceDemo), staff: null, pricing: { rules: { markup: 20, evalPrice: 17, prepPrice: 7,
+  function dload(){ try{ const v = JSON.parse(localStorage.getItem(DKEY)); if(v) return v; }catch(e){}
+    const orders = seed().map(priceDemo);
+    const marcus = orders.find(o => o.ticket === "PBG-261021-K7Q");
+    const s = { orders, repairPayouts: marcus ? [{ id: "demo-rp-1", paid_on: String(marcus.repair_paid_at).slice(0, 10), amount: 54, note: "Zelle, first repair batch", created_by: "Scott", created_at: marcus.repair_paid_at }] : [], staff: null, pricing: { rules: { markup: 20, evalPrice: 17, prepPrice: 7,
       gemTiers: [{ over: 4000, fee: 40 }, { over: 6000, fee: 60 }, { over: 8000, fee: 80 }, { over: 10000, fee: 100 }], magPrice: 15,
       split: { pbgPerGrade: 12, rrPerGrade: 8, pbgPerEval: 2, pbgPerPrep: 2, pbgGemPct: 70, pbgMagPct: 100 }, pricesChecked: "Nov 9, 2026" }, graders: null, updated_at: null, updated_by: null } };
     dsave(s); return s; }
@@ -417,6 +456,50 @@
     async rrPayments(from, to){ const st = dget(); return clone((st.rrPayments || []).filter(p => (!from || p.paid_on >= from) && (!to || p.paid_on <= to)).sort((a, b) => b.paid_on.localeCompare(a.paid_on))); },
     async addRrPayment(p){ const st = dget(); st.rrPayments = st.rrPayments || []; st.rrPayments.push({ id: uuid(), paid_on: p.paid_on, amount: +p.amount, method: p.method, reference: p.reference, note: p.note, created_by: st.staff && st.staff.name, created_at: new Date().toISOString() }); dsave(st); },
     async deleteRrPayment(id){ const st = dget(); if(!st.staff || st.staff.role !== "owner") throw new Error("Only an owner can delete a payment"); st.rrPayments = (st.rrPayments || []).filter(p => p.id !== id); dsave(st); },
+    repairGate(code){
+      const st = dget();
+      if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only an owner or Restored Rarity can change repair payouts, and only with Scott's code.");
+      const now = Date.now();
+      demo.repairFails = (demo.repairFails || []).filter(t => now - t < 15 * 60 * 1000);
+      if(demo.repairFails.length >= 5) throw new Error("Too many wrong repair payout codes. Wait 15 minutes and try again.");
+      if(code !== DEMO_REPAIR_CODE){ demo.repairFails.push(now); throw new Error("That repair payout code is not right."); }
+    },
+    async repairPayoutSummary(){
+      const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and Restored Rarity can see repair payouts");
+      const repairs_due = Math.round((st.orders || []).reduce((a, o) => a + (+o.repair_paid || 0), 0) * 100) / 100;
+      const payouts_recorded = Math.round((st.repairPayouts || []).reduce((a, p) => a + (+p.amount || 0), 0) * 100) / 100;
+      return { repairs_due, payouts_recorded, still_owed: Math.round((repairs_due - payouts_recorded) * 100) / 100 };
+    },
+    async repairPayouts(){
+      const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and Restored Rarity can see repair payouts");
+      return clone((st.repairPayouts || []).slice().sort((a, b) => b.paid_on.localeCompare(a.paid_on) || String(b.created_at).localeCompare(String(a.created_at))));
+    },
+    async checkRepairPayoutCode(code){ demo.repairGate(code); },
+    async addRepairPayout(code, p){
+      demo.repairGate(code);
+      const amount = Math.round((+p.amount) * 100) / 100, paid_on = p.paid_on;
+      if(!(amount > 0)) throw new Error("Enter an amount greater than zero.");
+      if(!paid_on) throw new Error("Enter the date PBG paid Scott.");
+      const st = dget(); st.repairPayouts = st.repairPayouts || [];
+      st.repairPayouts.push({ id: uuid(), paid_on, amount, note: (p.note || "").trim() || null, created_by: st.staff && st.staff.name, created_at: new Date().toISOString() });
+      dsave(st);
+    },
+    async updateRepairPayout(code, p){
+      demo.repairGate(code);
+      const st = dget(), row = (st.repairPayouts || []).find(x => x.id === p.id);
+      if(!row) throw new Error("That payout was not found.");
+      const amount = Math.round((+p.amount) * 100) / 100;
+      if(!(amount > 0)) throw new Error("Enter an amount greater than zero.");
+      if(!p.paid_on) throw new Error("Enter the date PBG paid Scott.");
+      Object.assign(row, { paid_on: p.paid_on, amount, note: (p.note || "").trim() || null, updated_at: new Date().toISOString(), updated_by: st.staff && st.staff.name });
+      dsave(st);
+    },
+    async deleteRepairPayout(code, id){
+      demo.repairGate(code);
+      const st = dget();
+      if(!(st.repairPayouts || []).some(p => p.id === id)) throw new Error("That payout was not found.");
+      st.repairPayouts = st.repairPayouts.filter(p => p.id !== id); dsave(st);
+    },
     async payouts(from, to){
       const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and the partner can see payouts");
       const a = new Date(from + "T00:00:00"), b = new Date(to + "T23:59:59");
@@ -465,6 +548,9 @@
     photoUrl: (...a) => impl.photoUrl(...a),
     payouts: (...a) => impl.payouts(...a),
     rrPayments: (...a) => impl.rrPayments(...a), addRrPayment: (...a) => impl.addRrPayment(...a), deleteRrPayment: (...a) => impl.deleteRrPayment(...a),
+    repairPayoutSummary: (...a) => impl.repairPayoutSummary(...a), repairPayouts: (...a) => impl.repairPayouts(...a),
+    checkRepairPayoutCode: (...a) => impl.checkRepairPayoutCode(...a), addRepairPayout: (...a) => impl.addRepairPayout(...a),
+    updateRepairPayout: (...a) => impl.updateRepairPayout(...a), deleteRepairPayout: (...a) => impl.deleteRepairPayout(...a),
     deleteOrder: (...a) => impl.deleteOrder(...a),
     auctionOrders: (...a) => impl.auctionOrders(...a),
     getPricing: (...a) => impl.getPricing(...a),
