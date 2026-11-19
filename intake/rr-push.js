@@ -1,9 +1,12 @@
-/* Sends repair cards from the PBG iPad to Restored Rarity's website backend, the same way
-   restoredraritytcg.com's own intake form does:
-     1. Restored Rarity portal (Supabase RPC intake_submit) -> RR code + customer's private link
+/* Sends prep, pre-grade evaluation, and repair cards from the PBG iPad to Restored
+   Rarity as one order, the same way restoredraritytcg.com's own intake form does:
+     1. Restored Rarity portal (Supabase RPC intake_submit) -> RR order number + private link
      2. Card photos to the portal's storage + portal_add_photo
      3. Restored Rarity Apps Script (Google Sheet, quote, confirmation + owner emails)
-   Each step is remembered on the submission, so a retry never creates a second submission.
+   The customer's name, email and phone go on that order. It is marked as coming from
+   PBG, and the PBG ticket is stored on it. The RR order number is saved back on the
+   PBG order (rr_code), so the two numbers stay tied.
+   Each step is remembered on the submission, so a retry never creates a second order.
    In demo mode (PBG Supabase not connected) nothing is sent; a pretend RR code is returned. */
 (function(){
   const REPAIR_SERVICE = { base: "Base Repair", major: "Major Repair", unsure: "Repair evaluation, quote needed" };
@@ -90,32 +93,59 @@
   const fileName = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
   const details = c => [c.set, c.number, c.year].filter(Boolean).join(" · ");
   const serviceOf = c => REPAIR_SERVICE[c.repairType] || c.repairType || REPAIR_SERVICE.base;
+  const partnerCards = s => (s.cards || []).filter(c => c.clean || c.eval || c.repair);
+  // One line the Restored Rarity portal shows on the order: where it came from, and the PBG ticket it is tied to.
+  const fromPbg = s => `From PBG · ${s.ticket}`;
+  const GRADERS = new Set(["PSA", "CGC", "BGS", "TAG"]);
+  // Work on this card, in Restored Rarity's service field. A repair name stays first when
+  // there is one, so Restored Rarity's quote still recognizes Base Repair / Major Repair.
+  const workOf = c => {
+    const parts = [];
+    if(c.repair) parts.push(serviceOf(c));
+    if(c.eval) parts.push("Pre-grade evaluation");
+    if(c.clean) parts.push("Prep");
+    return parts.join(" + ") || "Prep";
+  };
 
   async function pushRepairs(s){
-    const cards = s.cards.filter(c => c.repair);
+    const cards = partnerCards(s);
     if(!cards.length) return { code: null, link: null };
     if(!live()) return { code: "RR-DEMO" + s.ticket.slice(-3), link: "#demo", demo: true };
 
     const c0 = s.customer, name = `${c0.first} ${c0.last}`.trim();
+    const grading = GRADERS.has(s.grader) ? s.grader : "";
+    const alsoGrading = grading ? ` PBG is also submitting it to ${grading} ${s.tier || ""}.`.replace(/\s+\./, ".") : "";
     const pbgNote = c => [
-      `Service: ${serviceOf(c)}`,
-      c.value ? `NM value: $${String(c.value).replace(/^\$/, "")}` : "",
-      c.repairNote ? `Needs: ${c.repairNote}` : "",
-      c.repairPrice ? `PBG customer price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `: $${(+c.repairBase).toFixed(2)} repair + $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""}). Customer was shown this estimate at drop-off.` : `PBG customer: ${discount()}% off the total (repair + value surcharge). ${c.repairCustom ? "Card value is over the surcharge table: custom quote." : ""}`,
-      `Dropped off at PBG, ticket ${s.ticket}` + (s.grader && s.grader !== "None" ? ` (PBG is also submitting it to ${s.grader} ${s.tier || ""})` : "")
+      `From PBG. PBG order ${s.ticket}.`,
+      `Service: ${workOf(c)}`,
+      c.variant ? `Variant: ${c.variant}` : "",
+      c.value ? `Declared value: $${String(c.value).replace(/^\$/, "")}` : "",
+      c.repair && c.repairNote ? `Needs: ${c.repairNote}` : "",
+      c.repair && c.repairPrice ? `PBG customer repair price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `: $${(+c.repairBase).toFixed(2)} repair + $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""}). Customer was shown this estimate at drop-off.` : (c.repair ? `PBG customer: ${discount()}% off the repair total (repair + value surcharge). ${c.repairCustom ? "Card value is over the surcharge table: custom quote." : ""}` : ""),
+      (c.clean || c.eval) ? `${[c.clean && "Prep", c.eval && "Pre-grade evaluation"].filter(Boolean).join(" and ")} paid at PBG. This order is the work ticket, not a second bill.` : "",
+      `Dropped off at PBG.${alsoGrading}`
     ].filter(Boolean).join("\n");
+    const works = [...new Set(cards.map(workOf))];
+    const serviceLine = `${fromPbg(s)} · ${works.join("; ")}`.slice(0, 200);
 
-    // 1 + 2: portal submission and photos (once)
+    // 1 + 2: one Restored Rarity order and its photos (once per PBG ticket)
     if(!s.rrPortal){
       const portal = await rpc("intake_submit", { p: {
         name, email: c0.email || "", phone: c0.phone || "",
-        service: [...new Set(cards.map(serviceOf))].join("; "),
-        notes: "",
-        intake_info: [`Delivery: Dropped off at ${SHOP}`, `PBG ticket: ${s.ticket}`, `Received by: ${s.staff || ""}`,
-          "Customer agreed to Restored Rarity's Terms & Conditions on the PBG iPad"].join("\n"),
-        cards: cards.map(c => ({ name: c.name, details: details(c), service: serviceOf(c), grading: "", notes: pbgNote(c) }))
+        service: serviceLine,
+        notes: `PBG order ${s.ticket}. Dropped off at PBG Cards & Collectibles HTX.`,
+        intake_info: [
+          "Source: PBG Cards & Collectibles HTX",
+          `PBG order: ${s.ticket}`,
+          "This Restored Rarity order is tied to that PBG ticket.",
+          `Delivery: Dropped off at ${SHOP}`,
+          `Received by: ${s.staff || ""}`,
+          `Services: ${works.join("; ")}`,
+          cards.some(c => c.repair) ? "Customer agreed to Restored Rarity's Terms & Conditions on the PBG iPad for the repair cards." : "Prep and pre-grade evaluation were ordered at PBG."
+        ].join("\n"),
+        cards: cards.map(c => ({ name: c.name, details: details(c), service: workOf(c), grading, grade_level: grading ? (s.tier || "") : "", notes: pbgNote(c) }))
       }});
-      s.rrPortal = { code: portal.code, token: portal.token, storage_key: portal.storage_key, card_ids: portal.card_ids || [] };
+      s.rrPortal = { code: portal.code, token: portal.token, storage_key: portal.storage_key, card_ids: portal.card_ids || [], pbg_ticket: s.ticket };
       const bucket = cfg().bucket || "portal";
       for(let i = 0; i < cards.length; i++){
         for(const [side, label] of [["front", "front"], ["back", "back"]]){
@@ -124,21 +154,22 @@
             const path = `u/${portal.storage_key}/${fileName()}.jpg`;
             const up = await fetch(`${cfg().supabaseUrl}/storage/v1/object/${bucket}/${path}`, { method: "POST", headers: headers({ "Content-Type": "image/jpeg" }), body: blobOf(d) });
             if(!up.ok) throw new Error(up.status);
-            await rpc("portal_add_photo", { p_token: portal.token, p_path: path, p_caption: `Card ${i + 1} · ${label}`,
+            await rpc("portal_add_photo", { p_token: portal.token, p_path: path, p_caption: `Card ${i + 1} · ${label} · ${fromPbg(s)}`,
               p_card_id: (portal.card_ids || [])[i] || null, p_submission_code: portal.code, p_source: "intake" });
           }catch(e){ console.warn("Restored Rarity photo upload failed", e); }
         }
       }
     }
 
-    // 3: Apps Script (Google Sheet + Restored Rarity's confirmation and owner emails)
+    // 3: Apps Script (Google Sheet + Restored Rarity's confirmation and owner emails).
+    // The sheet's order id is the Restored Rarity order number. The address line carries the PBG ticket.
     const record = {
       id: s.rrPortal.code, name, email: c0.email || "", phone: c0.phone || "",
-      deliveryMethod: "Hand delivered", address: `Dropped off at ${SHOP} (PBG ticket ${s.ticket})`,
+      deliveryMethod: "Hand delivered", address: `PBG order ${s.ticket} · Dropped off at ${SHOP}`,
       insuredShipping: false, referralCode: cfg().referralCode || "",
-      cards: cards.map(c => ({ card: c.name, value: c.value ? String(c.value) : "", service: serviceOf(c), notes: pbgNote(c), grading: "",
+      cards: cards.map(c => ({ card: c.name, value: c.value ? String(c.value) : "", service: workOf(c), notes: pbgNote(c), grading,
         set: c.set || "", cardNo: c.number || "", year: c.year || "", photos: { front: "", back: "", details: [] } })),
-      agreedToTerms: true, status: "New", createdAt: s.createdAt
+      agreedToTerms: !!(s.agreedRR || cards.some(c => c.repair)), status: "New", createdAt: s.createdAt
     };
     const res = await fetch(cfg().appsScriptUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(record) });
     const out = await res.json().catch(() => null);
@@ -148,5 +179,5 @@
     return { code: s.rrPortal.code, link: `${base}#t=${s.rrPortal.token}` };
   }
 
-  window.RR = { pushRepairs, REPAIR_SERVICE, loadPrices, quote, surchargeFor, label, repairs: () => REPAIRS, surcharge: () => SURCHARGE, loadedAt: () => loadedAt, discount };
+  window.RR = { pushRepairs, pushOrder: pushRepairs, REPAIR_SERVICE, loadPrices, quote, surchargeFor, label, repairs: () => REPAIRS, surcharge: () => SURCHARGE, loadedAt: () => loadedAt, discount };
 })();

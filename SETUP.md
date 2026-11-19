@@ -138,14 +138,16 @@ Grading companies change prices and pause levels often. Check monthly and update
 
 Grading company fees are tracked separately as "owed to grading companies". Sales tax isn't part of the split. Owners and the Restored Rarity partner account can see Payouts; shop staff accounts can't.
 
-## 7. Repairs go to Restored Rarity's website
+## 7. Prep, pre-grade evaluation and repairs go to Restored Rarity as one order
 
-PBG is an authorized drop-off location for Restored Rarity. When a card is marked **Repair by Restored Rarity** on the iPad (Base repair, Major repair or "Not sure"), the customer also agrees to Restored Rarity's Terms & Conditions, and after the employee accepts the cards the iPad sends the repair cards to restoredraritytcg.com the same way its own intake form does:
+PBG is an authorized drop-off location for Restored Rarity. When a card is marked **Prep**, **Full evaluation** (pre-grade), or **Repair by Restored Rarity** (Base repair, Major repair or "Not sure"), the employee accepts the cards and the iPad opens **one Restored Rarity order** for those cards. Repair cards also require the customer to agree to Restored Rarity's Terms & Conditions. The order is sent the same way Restored Rarity's own intake form does:
 
-1. Restored Rarity portal (`intake_submit`), so the customer gets a Restored Rarity code and private link, with the card photos attached
-2. Restored Rarity's Apps Script, so the card lands in the Restored Rarity sheet with a quote and Restored Rarity's usual confirmation and owner emails
+1. Restored Rarity portal (`intake_submit`), with the customer's name, email and phone, the card photos, and each card's service
+2. Restored Rarity's Apps Script, so the order lands in the Restored Rarity sheet
 
-The delivery method is "Hand delivered" with the address "Dropped off at PBG Cards & Collectibles HTX (PBG ticket ...)", and each card's notes include the PBG ticket. The Restored Rarity code is saved on the PBG order and shown in the staff portal. Repairs are quoted and billed by Restored Rarity directly, so they aren't part of PBG's totals or the split. If the internet is down, the iPad retries automatically without creating duplicates.
+The order is marked **From PBG**. The Restored Rarity order number (like `RR-1042`) is saved on the PBG order as `rr_code`, and the PBG ticket is stored on the Restored Rarity order (its service line, private notes, and the sheet address). The staff portal shows both numbers together: Restored Rarity order RR-1042 is tied to that PBG ticket. One PBG ticket makes one Restored Rarity order, so a retry does not create a second one. If the internet is down, the iPad retries automatically.
+
+Repairs are still quoted and billed by Restored Rarity. Prep and pre-grade evaluation are paid at PBG; the Restored Rarity order is the work ticket, not a second bill. Nothing is sent while PBG is in demo mode.
 
 Settings are in `restoredRarity` inside `pbg-config.js` (the same public values the Restored Rarity site uses). Nothing is sent while PBG is in demo mode. Optional: set `referralCode` to a Restored Rarity referral code to tag PBG drop-offs.
 
@@ -206,5 +208,7 @@ Every order also gets PBG's own steps: Checked in, With Restored Rarity and Prep
 
 ## 14. Restored Rarity repairs and payouts
 - **Repair estimates on the iPad**: Restored Rarity's repair price + its card-value surcharge (same table as restoredraritytcg.com: none up to $250, 10% of value to $1,500, 12% to $3,000, custom quote above), then 10% off the total for PBG customers. Prices and the surcharge table load live from restoredraritytcg.com each time the app opens.
-- **Paid to Restored Rarity** (staff portal > Payouts, owners and Restored Rarity): earned vs paid by year and month, what's owed now, and a log of payments. Owners and Restored Rarity can log payments; only an owner can delete one.
-- Database: run `supabase/update-2026-11-16-rr-payments.sql` once.
+- **Repairs collected at PBG** are their own total, owed to Scott. They are not added into Restored Rarity's share of grading, evaluations, prep and gem services, and they are not added into grading-company fees.
+- **Repair payouts** (staff portal > Payouts, at the top): amount PBG has paid Scott, the date, and an optional note. Still owed = repairs due minus payouts recorded. The balance is visible to the owner and Restored Rarity. Recording, changing, or deleting a payout needs Scott's code. The database checks that code; hiding the form is not the lock. Shop staff cannot change the log without it. How Scott sets the code is in [HANDOFF.md](HANDOFF.md).
+- **Paid to Restored Rarity** (the section under Repair payouts): the service share, earned vs paid by year and month. It does not include repair money. Owners and Restored Rarity can log those service payments; only an owner can delete one.
+- Database, in order: `supabase/update-2026-11-16-rr-payments.sql`, `supabase/update-2026-11-16-repair-paid.sql`, then `supabase/update-2026-11-19-repair-payouts.sql`. Each one is safe to run again. After the last file, set Scott's code (HANDOFF.md). Until that code is set, the balance shows and payout entry is refused.
