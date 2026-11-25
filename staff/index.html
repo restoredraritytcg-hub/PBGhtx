@@ -13,11 +13,12 @@
 <script src="../pbg-config.js?v=20261116a"></script>
 <script src="../pbg-api.js?v=20261125a"></script>
 <script src="../site-content.js?v=20261116a"></script>
-<script src="site-editor.js?v=20261116a"></script>
+<script src="site-editor.js?v=20261125b"></script>
 <style>
 :root{--ink:#141414;--red:#E31B23;--paper:#F4F4F2;--white:#fff;--steel:#666D7A;--line:#DADDE2;--green:#1C7C47;--amber:#9A5B00;--violet:#5B3FA8}
 *{box-sizing:border-box}
-html,body{margin:0}
+html,body{margin:0;max-width:100%;overflow-x:clip}
+@supports not (overflow-x:clip){html,body{overflow-x:hidden}}
 body{background:var(--paper);color:var(--ink);font-family:Archivo,system-ui,sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}
 h1,h2,h3{margin:0;line-height:1.1;font-style:italic;font-weight:900;font-variation-settings:"wdth" 112}
 h1{font-size:30px}h2{font-size:24px}h3{font-size:18px}
@@ -27,14 +28,22 @@ button,input,select,textarea{font:inherit;color:inherit}
 [hidden]{display:none!important}
 a{color:inherit}
 
-.bar{background:#000;color:#fff;display:flex;align-items:center;gap:16px;padding:0 20px;height:64px;position:sticky;top:0;z-index:20}
-.bar img{height:44px;width:auto}
-.bar .t{font-size:15px;opacity:.75}
-.bar .r{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:14px}
-.bar .who{opacity:.85}
+.bar{background:#000;color:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;height:64px;position:sticky;top:0;z-index:20;width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.bar img{height:44px;width:auto;flex:none}
+.bar .t{font-size:15px;opacity:.75;flex:none;white-space:nowrap}
+.bar-nav{position:relative;min-width:0;flex:1 1 auto;display:flex;justify-content:flex-end}
+.bar .r{display:flex;align-items:center;gap:8px;font-size:14px;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;scrollbar-width:none;scroll-snap-type:x proximity;padding:0 2px 0 4px}
+.bar .r::-webkit-scrollbar{display:none;height:0}
+.bar .r > *{flex:none;scroll-snap-align:start}
+.bar .who{opacity:.85;white-space:nowrap}
+.bar-nav::before,.bar-nav::after{content:"";position:absolute;top:0;bottom:0;width:28px;pointer-events:none;z-index:2;opacity:0}
+.bar-nav::before{left:0;background:linear-gradient(90deg,#000 15%,transparent)}
+.bar-nav::after{right:0;background:linear-gradient(270deg,#000 15%,transparent)}
+.bar-nav.more::after,.bar-nav.back::before{opacity:1}
+@media (max-width:640px){.bar{padding:0 10px;gap:8px}.bar .btn-sm{min-height:44px}}
 .demo{background:#FCEFD6;color:#5A3A00;font-size:14px;padding:8px 20px;text-align:center}
 
-.wrap{max-width:1280px;margin:0 auto;padding:20px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px;min-width:0;overflow-wrap:anywhere}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;border:2px solid transparent;font-weight:750;font-size:15px;cursor:pointer;text-decoration:none;background:none;white-space:nowrap}
 .btn-red{background:var(--red);color:#fff}
 .btn-ink{background:var(--ink);color:#fff}
@@ -69,7 +78,12 @@ label.f .t{margin-top:4px}
 .graders{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
 .graders .chip{min-height:32px;font-size:13px}
 
-.table{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.table{background:#fff;border:1px solid var(--line);border-radius:14px;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin}
+.table.more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 22px),transparent)}
+.table.back:not(.more){-webkit-mask-image:linear-gradient(to right,transparent,#000 22px);mask-image:linear-gradient(to right,transparent,#000 22px)}
+.table.more.back{-webkit-mask-image:linear-gradient(to right,transparent,#000 22px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(to right,transparent,#000 22px,#000 calc(100% - 22px),transparent)}
+.table > .row > span{min-width:0;overflow-wrap:anywhere}
+.table > .row.h > span{white-space:nowrap;overflow-wrap:normal}
 .row{display:grid;grid-template-columns:36px 1.1fr 1.3fr .7fr 1.8fr .6fr;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
 .row:first-child{border-top:0}
 .row:hover{background:#FAFAF8}
@@ -97,7 +111,7 @@ label.f .t{margin-top:4px}
 .back{margin-bottom:12px}
 .dgrid{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
 @media (max-width:1000px){.dgrid{grid-template-columns:1fr}}
-.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;min-width:0;overflow-wrap:anywhere}
 .panel+.panel{margin-top:16px}
 .kv .panel+.panel{margin-top:0}
 .dhead{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
@@ -151,7 +165,9 @@ label.f .t{margin-top:4px}
 <header class="bar">
   <img src="../assets/pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX">
   <span class="t">Staff portal</span>
-  <div class="r" id="barRight"></div>
+  <div class="bar-nav" id="barNav">
+    <nav class="r" id="barRight" aria-label="Staff"></nav>
+  </div>
 </header>
 <div class="demo" id="demoBar" hidden>Demo mode with sample orders. Connect Supabase in pbg-config.js to use real data. Demo PINs: 482913 owner, 517204 staff, 260815 Restored Rarity, 739461 website only, 904372 shop iPad. Repair payout code (demo only): demo-repairs.</div>
 <div id="app"></div>
@@ -230,9 +246,30 @@ async function boot(){
   bar(); route();
 }
 function bar(){
-  $("#barRight").innerHTML = me ? `${me.role === "owner" ? `<a class="btn btn-line btn-sm" href="#team">Team</a>` : ""}${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","staff"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#auctions">Auctions</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  const nav = $("#barRight");
+  nav.innerHTML = me ? `${me.role === "owner" ? `<a class="btn btn-line btn-sm" href="#team">Team</a>` : ""}${["owner","web"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#site">Website</a>` : ""}${["owner","staff"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#auctions">Auctions</a>` : ""}${["owner","partner"].includes(me.role) ? `<a class="btn btn-line btn-sm" href="#payouts">Payouts</a>` : ""}${me.role !== "web" ? `<a class="btn btn-line btn-sm" href="#">Orders</a>` : ""}<span class="who">${esc(me.name)}${me.role === "partner" ? " (partner)" : me.role === "web" ? " (website)" : ""}</span><button class="btn btn-line btn-sm" id="out">Sign out</button>` : "";
+  nav.hidden = !me;
   const o = $("#out"); if(o) o.onclick = async () => { await PBG.signOut(); me = null; repairCode = ""; repairEdit = null; selected.clear(); view = { group: "open", grader: "all", q: "" }; bar(); location.hash = ""; signInView(); };
+  requestAnimationFrame(fitBar);
 }
+function fitBar(){
+  const sc = $("#barRight"), wrap = $("#barNav");
+  if(sc && wrap){
+    const extra = sc.scrollWidth - sc.clientWidth;
+    wrap.classList.toggle("more", extra > 2 && sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 4);
+    wrap.classList.toggle("back", extra > 2 && sc.scrollLeft > 4);
+  }
+  document.querySelectorAll(".table").forEach(t => {
+    const extra = t.scrollWidth - t.clientWidth;
+    t.classList.toggle("more", extra > 2 && t.scrollLeft + t.clientWidth < t.scrollWidth - 4);
+    t.classList.toggle("back", extra > 2 && t.scrollLeft > 4);
+  });
+}
+$("#barRight").addEventListener("scroll", fitBar, { passive: true });
+document.addEventListener("scroll", e => { if(e.target && e.target.classList && e.target.classList.contains("table")) fitBar(); }, true);
+addEventListener("resize", fitBar, { passive: true });
+new MutationObserver(() => requestAnimationFrame(fitBar)).observe(document.body, { childList: true, subtree: true });
+if(document.fonts) document.fonts.ready.then(fitBar);
 window.addEventListener("hashchange", () => me && route());
 function route(){
   if(location.hash === "#team" && me.role === "owner") return teamPage();
@@ -306,14 +343,14 @@ async function teamPage(){
   $("#app").innerHTML = `<div class="wrap" style="max-width:980px"><div class="top"><h1>Team</h1></div>
     <p style="color:var(--steel);margin:-6px 0 16px">Everyone signs in to this portal with their own 6-digit PIN. The shop iPad connects with a PIN too (iPad > Staff > Settings > Connect this iPad).</p>
     <div class="panel"><h2>People</h2>
-      <div class="table" style="margin-top:12px">${team.map(t => `<div class="row" style="grid-template-columns:1.2fr 1.1fr .9fr 1.6fr;cursor:default" data-u="${esc(t.user_id)}">
+      <div class="table" style="margin-top:12px">${team.map(t => `<div class="row" style="grid-template-columns:minmax(140px,1.2fr) minmax(150px,1.1fr) minmax(130px,.9fr) minmax(180px,1.6fr);cursor:default" data-u="${esc(t.user_id)}">
         <span><b>${esc(t.name)}</b>${t.user_id === me.user_id ? ' <span class="tag">You</span>' : ""}${t.active ? "" : ' <span class="tag" style="background:#EEE;color:#555">Turned off</span>'}<small>${t.pin_set_at ? "PIN set " + fmtDate(t.pin_set_at) : "No PIN yet"}</small></span>
         <span>${roleSel("data-role", t.role)}</span>
         <span><label class="toggle" style="margin:0"><input type="checkbox" data-active ${t.active ? "checked" : ""} ${t.user_id === me.user_id ? "disabled" : ""}> Can sign in</label></span>
         <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-line btn-sm" data-pin>New PIN</button>${t.user_id === me.user_id ? "" : '<button class="btn btn-ghost btn-sm" data-rm>Remove</button>'}</span></div>`).join("")}</div>
       <ul style="color:var(--steel);font-size:14px;margin:14px 0 0;padding-left:18px">${Object.values(ROLE_INFO).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
     <div class="panel"><h2>Add a person</h2>
-      <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;margin-top:12px">
         <label class="f">Name<input class="t" id="nName" placeholder="e.g. Jordan, or Shop iPad"></label>
         <label class="f">Role${roleSel('id="nRole"', "staff")}</label>
         <label class="f">6-digit PIN<input class="t" id="nPin" inputmode="numeric" maxlength="6" autocomplete="off"></label>
@@ -710,8 +747,8 @@ function drawAuctions(){
     <div class="graders"><button class="chip" data-ah="all" aria-pressed="${aview.house === "all"}">All houses</button>${houses.map(h => `<button class="chip" data-ah="${esc(h)}" aria-pressed="${aview.house === h}">${esc(house(h))}</button>`).join("")}
       <span style="width:12px"></span>${[["all","Both ways"],["standalone","Auction only"],["after_grading","After grading"]].map(([k, l]) => `<button class="chip" data-am="${k}" aria-pressed="${aview.mode === k}">${l}</button>`).join("")}</div>
     <div class="table">
-      <div class="row h" style="grid-template-columns:1fr 1.1fr 1fr .9fr .5fr .8fr .8fr 1.2fr;cursor:default"><span>Ticket</span><span>Customer</span><span>Service</span><span>House</span><span>Cards</span><span>Estimated</span><span>Hammer</span><span>Stage</span></div>
-      ${rows.length ? rows.map(o => `<div class="row" data-oid="${esc(o.id)}" style="grid-template-columns:1fr 1.1fr 1fr .9fr .5fr .8fr .8fr 1.2fr">
+      <div class="row h" style="grid-template-columns:minmax(108px,1fr) minmax(130px,1.1fr) minmax(150px,1fr) minmax(110px,.9fr) minmax(64px,.5fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(150px,1.2fr);cursor:default"><span>Ticket</span><span>Customer</span><span>Service</span><span>House</span><span>Cards</span><span>Estimated</span><span>Hammer</span><span>Stage</span></div>
+      ${rows.length ? rows.map(o => `<div class="row" data-oid="${esc(o.id)}" style="grid-template-columns:minmax(108px,1fr) minmax(130px,1.1fr) minmax(150px,1fr) minmax(110px,.9fr) minmax(64px,.5fr) minmax(96px,.8fr) minmax(88px,.8fr) minmax(150px,1.2fr)">
         <span class="tk">${esc(o.ticket)}<small>${fmtDate(o.created_at)}</small></span>
         <span>${esc(o.customer_first)} ${esc(o.customer_last)}<small>${esc(o.payout_method || "")}${o.payout_details ? ": " + esc(o.payout_details) : ""}</small></span>
         <span>${o.auction_mode === "standalone" ? "Auction only" : "After " + esc(PBG.graderName(o.grader)) + " grading"}</span>
@@ -785,8 +822,8 @@ async function rrLedger(){
       <div class="panel" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>Owed to Restored Rarity</span><b style="font-size:24px">${money(Math.max(owed, 0))}</b><small style="display:block;color:var(--steel)">${owed < -0.004 ? `Paid ${money(-owed)} ahead` : "Service share still unpaid, plus repairs still unpaid"}</small></div>
     </div>
     <div class="table" style="margin-top:16px">
-      <div class="row h" style="grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;cursor:default"><span>Month</span><span>Earned</span><span>Paid</span><span>Paid so far in ${year}</span><span>Owed at month end</span></div>
-      ${months.map(r => `<div class="row" style="grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;cursor:default"><span>${mName(r.m)}</span><span>${money(r.e)}</span><span>${money(r.p)}</span><span>${money(r.paidYtd)}</span><span>${money(Math.max(r.bal, 0))}</span></div>`).join("") || `<div class="empty">Nothing yet.</div>`}
+      <div class="row h" style="grid-template-columns:minmax(96px,1.2fr) minmax(84px,1fr) minmax(84px,1fr) minmax(158px,1.15fr) minmax(156px,1.15fr);cursor:default"><span>Month</span><span>Earned</span><span>Paid</span><span>Paid so far in ${year}</span><span>Owed at month end</span></div>
+      ${months.map(r => `<div class="row" style="grid-template-columns:minmax(96px,1.2fr) minmax(84px,1fr) minmax(84px,1fr) minmax(158px,1.15fr) minmax(156px,1.15fr);cursor:default"><span>${mName(r.m)}</span><span>${money(r.e)}</span><span>${money(r.p)}</span><span>${money(r.paidYtd)}</span><span>${money(Math.max(r.bal, 0))}</span></div>`).join("") || `<div class="empty">Nothing yet.</div>`}
     </div>
     <h3 style="margin-top:20px">Log a payment</h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;margin-top:8px">
@@ -797,8 +834,8 @@ async function rrLedger(){
     </div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ink btn-sm" id="lAdd">Log payment</button><button class="btn btn-line btn-sm" id="lCsv">Copy ${year} payments as CSV</button></div>
     <div class="table" style="margin-top:16px">
-      <div class="row h" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>Date</span><span>Amount</span><span>Method</span><span>Reference</span><span>Logged by</span><span></span></div>
-      ${pY.length ? pY.map(p => `<div class="row" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amt)}</b></span><span>${esc(p.method || "")}</span><span>${esc([p.reference, p.note].filter(Boolean).join(" · "))}</span><span>${esc(p.created_by || "")}</span><span>${owner ? `<button class="btn btn-line btn-sm" data-delpay="${esc(p.id)}">Delete</button>` : ""}</span></div>`).join("") : `<div class="empty">No payments logged in ${year}.</div>`}
+      <div class="row h" style="grid-template-columns:minmax(100px,.9fr) minmax(84px,.8fr) minmax(96px,.9fr) minmax(160px,2fr) minmax(110px,.9fr) minmax(84px,.5fr);cursor:default"><span>Date</span><span>Amount</span><span>Method</span><span>Reference</span><span>Logged by</span><span></span></div>
+      ${pY.length ? pY.map(p => `<div class="row" style="grid-template-columns:minmax(100px,.9fr) minmax(84px,.8fr) minmax(96px,.9fr) minmax(160px,2fr) minmax(110px,.9fr) minmax(84px,.5fr);cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amt)}</b></span><span>${esc(p.method || "")}</span><span>${esc([p.reference, p.note].filter(Boolean).join(" · "))}</span><span>${esc(p.created_by || "")}</span><span>${owner ? `<button class="btn btn-line btn-sm" data-delpay="${esc(p.id)}">Delete</button>` : ""}</span></div>`).join("") : `<div class="empty">No payments logged in ${year}.</div>`}
     </div>
     <p style="color:var(--steel);font-size:13px;margin-top:10px" data-end>The monthly table is the service share (grading, evaluations, prep and gem services), counted on the check-in date. Repair amounts are owed from check-in as well: an earlier quote if one was typed, otherwise the estimate. Owed to Restored Rarity adds those repairs and subtracts repair payouts recorded above. This payment log is the service share only. Owners and Restored Rarity can log these service payments; only an owner can delete one.</p>
   </details>`;
@@ -857,8 +894,8 @@ async function repairLedger(){
       <div class="panel" id="repairsOwed" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>${owedTitle}</span><b style="font-size:24px">${money(Math.abs(owed))}</b><small style="display:block;color:var(--steel)">Repairs owed minus payouts recorded</small></div>
     </div>
     <div class="table" style="margin-top:16px">
-      <div class="row h" style="grid-template-columns:${unlocked ? ".9fr .8fr 2fr .9fr 1fr .7fr" : ".9fr .8fr 2fr .9fr 1fr"};cursor:default"><span>Date</span><span>Amount</span><span>Note</span><span>Recorded by</span><span>Still owed after</span>${unlocked ? "<span></span>" : ""}</div>
-      ${desc.length ? desc.map(p => `<div class="row" style="grid-template-columns:${unlocked ? ".9fr .8fr 2fr .9fr 1fr .7fr" : ".9fr .8fr 2fr .9fr 1fr"};cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amount)}</b></span><span>${esc(p.note || "")}</span><span>${esc(p.created_by || "")}${p.updated_by ? `<small>edited by ${esc(p.updated_by)}</small>` : ""}</span><span>${balText(after.get(p.id))}</span>${unlocked ? `<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-line btn-sm" data-editpay="${esc(p.id)}">Edit</button><button class="btn btn-line btn-sm" data-delrpay="${esc(p.id)}">Delete</button></span>` : ""}</div>`).join("") : `<div class="empty">No repair payouts recorded yet.</div>`}
+      <div class="row h" style="grid-template-columns:${unlocked ? "minmax(100px,.9fr) minmax(84px,.8fr) minmax(160px,2fr) minmax(120px,.9fr) minmax(132px,1fr) minmax(150px,.8fr)" : "minmax(100px,.9fr) minmax(84px,.8fr) minmax(160px,2fr) minmax(120px,.9fr) minmax(132px,1fr)"};cursor:default"><span>Date</span><span>Amount</span><span>Note</span><span>Recorded by</span><span>Still owed after</span>${unlocked ? "<span></span>" : ""}</div>
+      ${desc.length ? desc.map(p => `<div class="row" style="grid-template-columns:${unlocked ? "minmax(100px,.9fr) minmax(84px,.8fr) minmax(160px,2fr) minmax(120px,.9fr) minmax(132px,1fr) minmax(150px,.8fr)" : "minmax(100px,.9fr) minmax(84px,.8fr) minmax(160px,2fr) minmax(120px,.9fr) minmax(132px,1fr)"};cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amount)}</b></span><span>${esc(p.note || "")}</span><span>${esc(p.created_by || "")}${p.updated_by ? `<small>edited by ${esc(p.updated_by)}</small>` : ""}</span><span>${balText(after.get(p.id))}</span>${unlocked ? `<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-line btn-sm" data-editpay="${esc(p.id)}">Edit</button><button class="btn btn-line btn-sm" data-delrpay="${esc(p.id)}">Delete</button></span>` : ""}</div>`).join("") : `<div class="empty">No repair payouts recorded yet.</div>`}
     </div>
     ${unlocked ? `<h3 style="margin-top:20px">${editing ? "Change this payout" : "Record a payout"}</h3>
       <p style="color:var(--steel);font-size:14px;margin-top:6px">How much PBG has paid Scott for repairs. The code stays on this screen until you lock it or sign out. It is not saved on this computer.</p>
@@ -943,8 +980,8 @@ async function payouts(){
       <div class="panel" id="owedRR"><span>Owed to Restored Rarity</span><b style="font-size:24px">${money(tot.rr + (tot.repairOwed || 0))}</b><small style="display:block;color:var(--steel)">Services plus repairs${tot.repairOwed == null ? " (repairs join after the database update)" : ""}, these dates, before payments.</small></div>
     </div>
     <div class="table">
-      <div class="row h" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default"><span>Ticket</span><span>Date</span><span>Company</span><span>Graded</span><span>Evals / preps / gems</span><span>Mags</span><span>${partner ? "" : "Grader fees"}</span><span>${partner ? "" : "PBG"}</span><span>Restored Rarity</span></div>
-      ${rows.length ? rows.map(r => `<div class="row" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default">
+      <div class="row h" style="grid-template-columns:minmax(88px,1.2fr) minmax(96px,.9fr) minmax(120px,.9fr) minmax(72px,.6fr) minmax(156px,.8fr) minmax(58px,.5fr) minmax(100px,.8fr) minmax(72px,.7fr) minmax(132px,.9fr);cursor:default"><span>Ticket</span><span>Date</span><span>Company</span><span>Graded</span><span>Evals / preps / gems</span><span>Mags</span><span>${partner ? "" : "Grader fees"}</span><span>${partner ? "" : "PBG"}</span><span>Restored Rarity</span></div>
+      ${rows.length ? rows.map(r => `<div class="row" style="grid-template-columns:minmax(88px,1.2fr) minmax(96px,.9fr) minmax(120px,.9fr) minmax(72px,.6fr) minmax(156px,.8fr) minmax(58px,.5fr) minmax(100px,.8fr) minmax(72px,.7fr) minmax(132px,.9fr);cursor:default">
         <span class="tk">${esc(r.ticket)}</span><span>${fmtDate(r.created_at)}</span><span>${r.grader === "None" ? "Prep only" : esc(PBG.graderName(r.grader) + " " + (r.tier || ""))}</span>
         <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money((+r.rr_share || 0) + (owedKnown ? +r.repair_owed || 0 : 0))}</b><small style="display:block;color:var(--steel);font-size:11px">Services ${money(r.rr_share)}</small>${owedKnown && +r.repair_owed ? `<small style="display:block;color:var(--steel);font-size:11px">Repairs owed ${money(r.repair_owed)}</small>` : ""}${+r.repair_paid ? `<small style="display:block;color:var(--steel);font-size:11px">Repairs collected ${money(r.repair_paid)}</small>` : ""}</span></div>`).join("")
         : `<div class="empty">No orders in these dates.</div>`}
