@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="pbg-config.js?v=20261116a"></script>
-<script src="pbg-api.js?v=20261119a"></script>
+<script src="pbg-api.js?v=20261125a"></script>
 <style>
 :root{--red:#E31B23;--panel:#151515;--line:#2E2E2E;--smoke:#B4B4B4;--green:#2BD46A}
 *{box-sizing:border-box}
@@ -123,7 +123,7 @@ async function load(){
       <p class="muted" style="margin-top:8px">${o.cards.length} card${o.cards.length === 1 ? "" : "s"} ${gname ? `for ${esc(gname)} ${esc(o.tier || "")} grading` : o.auction_house ? "for auction" : "for prep with Restored Rarity TCG"}${o.auction_house ? (gname ? `, then auction at ${esc(house)}` : ` at ${esc(house)}`) : ""}.</p>
       <div class="now"><span>${done ? "Good news" : "Current stage"}</span><h2>${esc(cur.label)}</h2><p>${esc(cur.customer_text)}</p>
         ${o.auction_house && hammer ? `<p style="color:#fff;margin-top:10px">Hammer price so far: <b>$${hammer.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>. You get 100% of it.</p>` : ""}
-        ${o.current_stage === "ready" && o.payment_when === "pickup" ? `<p style="color:#fff;margin-top:10px">Balance due at pickup: <b>$${(+o.total || 0).toFixed(2)}</b></p>` : ""}</div>
+        ${o.current_stage === "ready" && o.payment_when === "pickup" ? `<p style="color:#fff;margin-top:10px">Balance due at pickup: <b>$${PBG.customerTotal(o).toFixed(2)}</b></p>` : ""}</div>
       <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Order progress"><i style="width:${pct}%"></i></div>
       <div class="barl"><span>Step ${idx + 1} of ${list.length}</span><span>${pct}%</span></div>
     </div>
@@ -143,7 +143,7 @@ async function load(){
       <div><h3>${esc(c.name)}</h3><p class="meta">${esc([c.year, c.set_name, c.card_number && "#" + c.card_number, c.variant].filter(Boolean).join(", "))}</p>
         <div class="chips">${c.gem ? '<span class="chip" style="background:#5A4600">Gem service</span>' : ""}${c.eval ? '<span class="chip">Full evaluation</span>' : ""}${c.clean ? '<span class="chip">Prep</span>' : ""}${c.repair ? '<span class="chip">Repair with Restored Rarity</span>' : ""}</div>
         ${c.eval_result ? `<p class="eval"><b>Evaluation:</b> ${esc(c.eval_result)}</p>` : ""}
-        ${c.repair ? `<p class="eval">${+c.repair_quote > 0 ? `<b>Repair quote: $${(+c.repair_quote).toFixed(2)}</b> (PBG 10% discount included). ` : ""}Repairs are handled by Restored Rarity TCG, who bill them separately and send you their own tracking link.</p>` : ""}
+        ${c.repair ? `<p class="eval">${(() => { const d = PBG.cardRepairDue(c); const tail = " Collected at PBG at payment. Adjust later if Restored Rarity's final price differs."; if(d.source === "legacy") return `<b>Quoted earlier: $${d.amount.toFixed(2)}</b>.${tail}`; if(d.source === "estimate") return `<b>Repair estimate: $${d.amount.toFixed(2)}</b>. An estimate based on Restored Rarity's prices with PBG's 10% off.${tail}`; if(d.source === "custom") return `<b>Repair quote: $${d.amount.toFixed(2)}</b> (card over $3,000).${tail}`; return "Repair with Restored Rarity. PBG collects the estimate at payment (Restored Rarity's price with 10% off). A card over $3,000 is a custom quote."; })()}</p>` : ""}
         ${c.card_status ? `<p class="eval">${esc(c.card_status)}</p>` : ""}
         ${c.grade ? `<span class="grade">${esc(c.grade)}</span>${c.cert_number ? `<p class="meta" style="margin-top:6px">Cert #${esc(c.cert_number)}</p>` : ""}` : ""}
         ${c.hammer_price ? `<p class="eval"><b>Sold for $${(+c.hammer_price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> (hammer price, yours in full)${c.auction_lot_url && /^https:\/\//.test(c.auction_lot_url) ? ` · <a href="${esc(c.auction_lot_url)}" style="color:#fff">See the lot</a>` : ""}</p>` : ""}

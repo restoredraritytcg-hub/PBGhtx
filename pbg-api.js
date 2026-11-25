@@ -56,6 +56,51 @@
 
   const GRADER_NAMES = { BGS: "Beckett" };
   const graderName = g => GRADER_NAMES[g] || g;
+  const r2 = n => Math.round((+n || 0) * 100) / 100;
+
+  // Check-in estimate: the numeric column, or "est. $X" in the note until that column exists.
+  function parsedRepairEstimate(c){
+    if(!c) return null;
+    if(c.repair_estimate != null && c.repair_estimate !== "" && isFinite(+c.repair_estimate)) return r2(c.repair_estimate);
+    const m = String(c.repair_note || "").match(/est\. \$([0-9.]+)/);
+    return m ? r2(m[1]) : null;
+  }
+  // Amount owed for one repair. An existing repair_quote (typed earlier, or an over-$3,000
+  // custom quote) is the amount. Otherwise the check-in estimate.
+  function cardRepairDue(c){
+    if(!c || !c.repair) return { amount: 0, source: "none", estimate: null, quote: null };
+    const estimate = parsedRepairEstimate(c);
+    const quote = c.repair_quote != null && c.repair_quote !== "" && isFinite(+c.repair_quote) && +c.repair_quote > 0 ? r2(c.repair_quote) : null;
+    if(quote != null && estimate != null) return { amount: quote, source: "legacy", estimate, quote };
+    if(quote != null) return { amount: quote, source: "custom", estimate: null, quote };
+    if(estimate != null) return { amount: estimate, source: "estimate", estimate, quote: null };
+    return { amount: 0, source: "none", estimate: null, quote: null };
+  }
+  // The only new quote staff can type: no estimate, and the card is over Restored Rarity's $3,000 table.
+  function customRepairCard(c){
+    if(!c || !c.repair) return false;
+    const due = cardRepairDue(c);
+    if(due.source === "legacy" || due.source === "estimate") return false;
+    return (+c.declared_value > 3000) || /custom quote/i.test(String(c.repair_note || ""));
+  }
+  function orderRepairAmount(cards){
+    const rows = (cards || []).filter(c => c.repair).map(cardRepairDue);
+    return {
+      cards: rows.length,
+      amt: r2(rows.reduce((a, row) => a + row.amount, 0)),
+      legacy: rows.filter(row => row.source === "legacy").length,
+      estimated: rows.filter(row => row.source === "estimate").length,
+      custom: rows.filter(row => row.source === "custom").length,
+      unpriced: rows.filter(row => row.source === "none").length
+    };
+  }
+  // Ticket total the customer pays. repair_included is the repair dollars already inside orders.total.
+  function customerTotal(order){
+    if(!order) return 0;
+    const due = orderRepairAmount(order.cards).amt, base = +order.total || 0;
+    if(order.repair_included == null || order.repair_included === "") return r2(base + due);
+    return r2(base + Math.max(0, r2(due - (+order.repair_included || 0))));
+  }
 
   function stageList(order, rows){
     rows = rows || DEFAULT_STAGES;
@@ -98,6 +143,7 @@
       auction_house: s.auction ? s.auction.house : null, auction_mode: s.auction ? s.auction.mode : null,
       payout_method: s.auction ? s.auction.payout : null, payout_details: s.auction ? (s.auction.payoutDetails || null) : null, rr_code: s.rrCode || null, if_low_grade: s.cards.some(c => c.eval) ? s.ifLowGrade : null,
       subtotal: round(t.subtotal), tax: round(t.tax), total: round(t.total),
+      repair_included: round(t.repairTotal),
       payment_when: s.payment.when, payment_method: s.payment.method,
       signed_name: s.signedName, received_by: s.staff, pickup_policy_ack: !!s.agreedPickup,
       ownership_ack: !!s.agreedOwn, terms_version: s.termsVersion || null, terms_text: s.termsText || null, signed_at: s.signedAt || null
@@ -107,7 +153,8 @@
     return { position: i+1, category: c.category, name: c.name, year: c.year || null, set_name: c.set || null, card_number: c.number || null,
       variant: c.variant || null, declared_value: +c.value || 0, clean: !!c.clean, eval: !!c.eval, repair: !!c.repair, gem: !!c.gem, gem_fee: +c.gemFee || 0, mag_case: !!c.mag,
       grade: c.slabGrade || null, cert_number: c.cert || null,
-      repair_note: c.repair ? [(({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || c.repairType || "Repair") + (c.repairPrice ? ` (est. $${(+c.repairPrice).toFixed(2)} with PBG ${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `, incl. $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""})` : c.repairCustom ? " (custom quote: card value over the surcharge table)" : ""), c.repairNote].filter(Boolean).join(": ") : null };
+      repair_note: c.repair ? [(({ base: "Base repair", major: "Major repair", unsure: "Repair, needs a look" })[c.repairType] || c.repairType || "Repair") + (c.repairPrice ? ` (est. $${(+c.repairPrice).toFixed(2)} with PBG ${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `, incl. $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""})` : c.repairCustom ? " (custom quote: card value over the surcharge table)" : ""), c.repairNote].filter(Boolean).join(": ") : null,
+      repair_estimate: c.repair && c.repairPrice != null && c.repairPrice !== "" ? round(c.repairPrice) : null };
   }
   const round = n => Math.round((+n || 0) * 100) / 100;
 
@@ -182,15 +229,36 @@
       let { data: existing } = await sb.from("orders").select("id").eq("ticket", s.ticket).maybeSingle();
       let id = existing && existing.id;
       if(!id){
-        let { data, error } = await sb.from("orders").insert(order).select("id").single();
-        // If the database hasn't had the terms columns added yet, save the order without them rather than leave it stuck.
-        if(error && /terms_version|terms_text|signed_at|ownership_ack/.test(error.message)){
-          const { terms_version, terms_text, signed_at, ownership_ack, ...rest } = order;
-          ({ data, error } = await sb.from("orders").insert(rest).select("id").single());
+        let row = order, data, error;
+        for(let attempt = 0; attempt < 3 && !data; attempt++){
+          ({ data, error } = await sb.from("orders").insert(row).select("id").single());
+          if(!error) break;
+          const msg = error.message || "";
+          // Column not added yet: save the ticket without the repair dollars inside the total.
+          // The migration adds them once, when it fills repair_included.
+          if(/repair_included/.test(msg) && Object.prototype.hasOwnProperty.call(row, "repair_included")){
+            const less = round(row.repair_included);
+            const { repair_included, ...rest } = row;
+            rest.subtotal = round((+rest.subtotal || 0) - less);
+            rest.total = round((+rest.total || 0) - less);
+            row = rest;
+            continue;
+          }
+          if(/terms_version|terms_text|signed_at|ownership_ack/.test(msg)){
+            const { terms_version, terms_text, signed_at, ownership_ack, ...rest } = row;
+            row = rest;
+            continue;
+          }
+          break;
         }
         if(error) throw new Error("Saving the order failed: " + error.message); id = data.id;
       }
-      const { error: ce } = await sb.from("cards").upsert(cards.map(c => ({ ...c, order_id: id })), { onConflict: "order_id,position" });
+      let cardRows = cards.map(c => ({ ...c, order_id: id }));
+      let { error: ce } = await sb.from("cards").upsert(cardRows, { onConflict: "order_id,position" });
+      if(ce && /repair_estimate/.test(ce.message || "")){
+        cardRows = cardRows.map(({ repair_estimate, ...c }) => c);
+        ({ error: ce } = await sb.from("cards").upsert(cardRows, { onConflict: "order_id,position" }));
+      }
       if(ce) throw new Error("Saving the cards failed: " + ce.message);
       return { id };
     },
@@ -307,7 +375,7 @@
   };
 
   /* =================== DEMO (sample data in this browser) =================== */
-  const DKEY = "pbg.demo.v16";
+  const DKEY = "pbg.demo.v17";
   // Demo only. The live code is a hash in Supabase, set by Scott. This string does nothing once Supabase is connected.
   const DEMO_REPAIR_CODE = "demo-repairs";
   const ph = (bg, fg, label) => "data:image/svg+xml;utf8," + encodeURIComponent(
@@ -321,7 +389,7 @@
       current_stage: events[events.length-1][0] });
     return [
       mk({ ticket: "PBG-261021-K7Q", customer_first: "Marcus", customer_last: "Lee", phone: "832-555-0142", contact_pref: "Text", grader: "PSA", tier: "Value", grade_each: 25, has_prep: true, total: 105, payment_when: "dropoff", created_at: d(19), grader_order_no: "PSA 24418873", received_by: "Jordan", rr_code: "RR-3101", repair_paid: 54, repair_paid_at: d(10), repair_paid_method: "Card" },
-        [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", declared_value: 350, clean: true, eval: true, repair: true, repair_quote: 54, repair_note: "Base repair (est. $54.00 with PBG 10% off)", eval_result: "Strong 10 candidate. Centering 55/45.", front_path: ph("#E25822","#F3D27A","Charizard ex") },
+        [{ category: "Pokémon", name: "Charizard ex", year: "2023", set_name: "Obsidian Flames", card_number: "223", declared_value: 350, clean: true, eval: true, repair: true, repair_quote: 75, repair_estimate: 54, repair_note: "Base repair (est. $54.00 with PBG 10% off)", eval_result: "Strong 10 candidate. Centering 55/45.", front_path: ph("#E25822","#F3D27A","Charizard ex") },
          { category: "Pokémon", name: "Umbreon VMAX", year: "2021", set_name: "Evolving Skies", card_number: "215", declared_value: 450, clean: true, eval: true, eval_result: "9 likely. Light whitening on back corner.", front_path: ph("#1F2A44","#F3D27A","Umbreon VMAX") },
          { category: "Pokémon", name: "Pikachu VMAX", year: "2020", set_name: "Vivid Voltage", card_number: "188", declared_value: 120, front_path: ph("#F7D02C","#C21F32","Pikachu VMAX") }],
         [["checked_in", d(19)], ["at_partner", d(18)], ["prep_done", d(15), "All three cleaned. Evaluations attached to each card."], ["shipped_to_grader", d(14)], ["psa_arrived", d(11)], ["psa_order_prep", d(9)], ["psa_research_id", d(6)], ["psa_grading", d(2)]]),
@@ -338,7 +406,7 @@
          { category: "Sports", name: "Hakeem Olajuwon", year: "1986", set_name: "Fleer", card_number: "82", declared_value: 200, front_path: ph("#CE1141","#FDB927","Olajuwon") }],
         [["checked_in", d(0.1)]]),
       mk({ ticket: "PBG-261028-H5N", customer_first: "Priya", customer_last: "Shah", phone: "346-555-0123", contact_pref: "Email", email: "priya@example.com", grader: "None", tier: null, grade_each: 0, has_prep: true, total: 30, payment_when: "dropoff", created_at: d(12), received_by: "Alex", rr_code: "RR-3102", repair_paid: 120, repair_paid_at: d(4), repair_paid_method: "Cash" },
-        [{ category: "Pokémon", name: "Lugia", year: "2000", set_name: "Neo Genesis", card_number: "9", variant: "Holo", declared_value: 500, eval: true, repair: true, repair_quote: 120, repair_note: "Major repair (est. $120.00 with PBG 10% off)", eval_result: "Solid 7. Edge wear top left. Not worth PSA Regular.", front_path: ph("#5B7DB1","#E8E8E8","Lugia Holo") },
+        [{ category: "Pokémon", name: "Lugia", year: "2000", set_name: "Neo Genesis", card_number: "9", variant: "Holo", declared_value: 500, eval: true, repair: true, repair_estimate: 120, repair_note: "Major repair (est. $120.00 with PBG 10% off)", eval_result: "Solid 7. Edge wear top left. Not worth PSA Regular.", front_path: ph("#5B7DB1","#E8E8E8","Lugia Holo") },
          { category: "Pokémon", name: "Typhlosion", year: "2000", set_name: "Neo Genesis", card_number: "17", variant: "Holo", declared_value: 120, eval: true, eval_result: "8 possible after cleaning.", front_path: ph("#D35400","#2C3E50","Typhlosion") }],
         [["checked_in", d(12)], ["at_partner", d(11)], ["prep_done", d(6), "Evaluations done. See notes on each card."]]),
       mk({ ticket: "PBG-260712-Z4C", customer_first: "Tyler", customer_last: "Nguyen", phone: "936-555-0188", contact_pref: "Text", email: "tyler@example.com", mailing_address: "1418 Example Ln, Spring, TX 77386", pickup_policy_ack: true, grader: "PSA", tier: "Value", grade_each: 25, has_prep: false, total: 75, payment_when: "pickup", created_at: d(120), received_by: "Jordan", grader_order_no: "PSA 23991020" },
@@ -364,8 +432,10 @@
     const gf = v => [[10000,100],[8000,80],[6000,60],[4000,40]].find(([over]) => v > over)?.[1] || 0;
     o.cards.forEach(c => { c.gem_fee = g ? gf(+c.declared_value || 0) : 0; c.gem = c.gem_fee > 0; });
     const gm = o.cards.filter(c => c.gem).length, gemFees = o.cards.reduce((a, c) => a + c.gem_fee, 0);
+    const repairs = orderRepairAmount(o.cards).amt;
     Object.assign(o, { grader_fee_each: fee, grade_each: g ? r2(fee + 20) : 0, graded_count: g, eval_count: ev, prep_count: pr, gem_count: gm, gem_fees: gemFees, grader_fees: r2(fee * g),
-      pbg_share: r2(g * 12 + ev * 2 + pr * 2 + gemFees * 0.7), rr_share: r2(g * 8 + ev * 15 + pr * 5 + gemFees * 0.3), total: r2((g ? (fee + 20) * g : 0) + ev * 17 + pr * 7 + gemFees), tax: 0 });
+      pbg_share: r2(g * 12 + ev * 2 + pr * 2 + gemFees * 0.7), rr_share: r2(g * 8 + ev * 15 + pr * 5 + gemFees * 0.3),
+      repair_included: repairs, total: r2((g ? (fee + 20) * g : 0) + ev * 17 + pr * 7 + gemFees + repairs), tax: 0 });
     return o;
   }
   function dload(){ try{ const v = JSON.parse(localStorage.getItem(DKEY)); if(v) return v; }catch(e){}
@@ -449,7 +519,7 @@
     async getStatus(token){
       const o = dget().orders.find(x => x.public_token === token); if(!o) return null;
       return { ticket: o.ticket, first_name: o.customer_first, created_at: o.created_at, grader: o.grader, tier: o.tier, has_prep: o.has_prep, current_stage: o.current_stage,
-        total: o.total, payment_when: o.payment_when, return_tracking: o.return_tracking, auction_house: o.auction_house || null, auction_mode: o.auction_mode || null, cards: clone(o.cards),
+        total: o.total, repair_included: o.repair_included, payment_when: o.payment_when, return_tracking: o.return_tracking, auction_house: o.auction_house || null, auction_mode: o.auction_mode || null, cards: clone(o.cards),
         events: o.stage_events.filter(e => e.visible_to_customer).map(e => ({ stage: e.stage, note: e.note, at: e.created_at })) };
     },
     photoUrl(path){ return path || null; },
@@ -466,9 +536,10 @@
     },
     async repairPayoutSummary(){
       const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and Restored Rarity can see repair payouts");
-      const repairs_due = Math.round((st.orders || []).reduce((a, o) => a + (+o.repair_paid || 0), 0) * 100) / 100;
-      const payouts_recorded = Math.round((st.repairPayouts || []).reduce((a, p) => a + (+p.amount || 0), 0) * 100) / 100;
-      return { repairs_due, payouts_recorded, still_owed: Math.round((repairs_due - payouts_recorded) * 100) / 100 };
+      const repairs_due = r2((st.orders || []).reduce((a, o) => a + orderRepairAmount(o.cards).amt, 0));
+      const repairs_collected = r2((st.orders || []).reduce((a, o) => a + (+o.repair_paid || 0), 0));
+      const payouts_recorded = r2((st.repairPayouts || []).reduce((a, p) => a + (+p.amount || 0), 0));
+      return { repairs_due, repairs_collected, payouts_recorded, still_owed: r2(repairs_due - payouts_recorded) };
     },
     async repairPayouts(){
       const st = dget(); if(!st.staff || !["owner","partner"].includes(st.staff.role)) throw new Error("Only owners and Restored Rarity can see repair payouts");
@@ -505,7 +576,7 @@
       const a = new Date(from + "T00:00:00"), b = new Date(to + "T23:59:59");
       return st.orders.filter(o => { const d = new Date(o.created_at); return d >= a && d <= b; }).sort((x, y) => x.created_at.localeCompare(y.created_at))
         .map(o => ({ ticket: o.ticket, created_at: o.created_at, grader: o.grader, tier: o.tier, current_stage: o.current_stage, graded_count: o.graded_count || 0,
-          eval_count: o.eval_count || 0, prep_count: o.prep_count || 0, gem_count: o.gem_count || 0, gem_fees: o.gem_fees || 0, mag_count: o.mag_count || 0, mag_fees: o.mag_fees || 0, total: o.total, tax: o.tax || 0, grader_fees: o.grader_fees || 0, pbg_share: o.pbg_share || 0, rr_share: o.rr_share || 0, repair_paid: o.repair_paid || null, repair_paid_at: o.repair_paid_at || null }));
+          eval_count: o.eval_count || 0, prep_count: o.prep_count || 0, gem_count: o.gem_count || 0, gem_fees: o.gem_fees || 0, mag_count: o.mag_count || 0, mag_fees: o.mag_fees || 0, total: o.total, tax: o.tax || 0, grader_fees: o.grader_fees || 0, pbg_share: o.pbg_share || 0, rr_share: o.rr_share || 0, repair_paid: o.repair_paid || null, repair_paid_at: o.repair_paid_at || null, repair_owed: orderRepairAmount(o.cards).amt }));
     },
     async getSite(){ return clone(siteDemo()); },
     async saveSite(key, value){
@@ -561,6 +632,7 @@
     uploadSiteImage: (...a) => impl.uploadSiteImage(...a),
     demoTokens: () => impl.demoTokens ? impl.demoTokens() : [],
     resetDemo: () => impl.resetDemo && impl.resetDemo(),
-    stageList, graderName, statusUrl, newToken: uuid, DEFAULT_STAGES
+    stageList, graderName, statusUrl, newToken: uuid, DEFAULT_STAGES,
+    cardRepairDue, customRepairCard, orderRepairAmount, customerTotal
   };
 })();

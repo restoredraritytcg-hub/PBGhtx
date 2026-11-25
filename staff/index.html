@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261119a"></script>
+<script src="../pbg-api.js?v=20261125a"></script>
 <script src="../site-content.js?v=20261116a"></script>
 <script src="site-editor.js?v=20261116a"></script>
 <style>
@@ -412,6 +412,19 @@ function drawBulk(){
   };
 }
 
+/* Quote field: hidden when the card has an estimate. An existing quote stays
+   read-only ("Quoted earlier") and is the amount. The only editor is an
+   over-$3,000 card with no estimate. */
+function repairPriceField(c){
+  if(!c.repair) return "";
+  const due = PBG.cardRepairDue(c);
+  if(due.source === "legacy") return `<p class="f" style="margin:0">Quoted earlier<b style="display:block;font-size:16px">${money(due.amount)}</b><small style="color:var(--steel);font-weight:500">This quote was already on the card, so it is the amount owed. The check-in estimate is ${money(due.estimate)}.</small></p>`;
+  if(PBG.customRepairCard(c)) return `<label class="f">RR custom quote (cards over $3,000) $<input class="t" data-f="repair_quote" type="number" inputmode="decimal" value="${esc(c.repair_quote ?? "")}"></label>`;
+  if(due.source === "custom") return `<p class="f" style="margin:0">Quoted earlier<b style="display:block;font-size:16px">${money(due.amount)}</b><small style="color:var(--steel);font-weight:500">This quote was already on the card, so it is the amount owed.</small></p>`;
+  if(due.source === "estimate") return `<p class="f" style="margin:0">Repair estimate<b style="display:block;font-size:16px">${money(due.amount)}</b><small style="color:var(--steel);font-weight:500">Collected at PBG. Adjust later if Restored Rarity's final price differs.</small></p>`;
+  return `<p class="f" style="margin:0">Repair<small style="display:block;color:var(--steel);font-weight:500">No estimate on this card. A quote can be entered only for a Restored Rarity custom quote over $3,000.</small></p>`;
+}
+
 /* ---------- order detail ---------- */
 async function detail(id){
   $("#app").innerHTML = `<div class="wrap"><div class="empty">Loading order…</div></div>`;
@@ -422,8 +435,10 @@ async function detail(id){
   const link = PBG.statusUrl(o.public_token);
   const smsBody = `Hi ${o.customer_first}, it's PBG Cards & Collectibles. Your ticket ${o.ticket} is now at: ${s.cur.label}. Track it here: ${link}`;
   const lastPhase = l => ({ shop: "PBG", partner: "Restored Rarity", ship: "Shipping", grader: PBG.graderName(o.grader), auction: "Auction" }[l]);
-  // Restored Rarity repairs: the quote Restored Rarity entered, otherwise the check-in estimate saved on the card
-  const rep = (() => { const rc = o.cards.filter(c => c.repair); let amt = 0, quoted = 0; rc.forEach(c => { if(+c.repair_quote > 0){ amt += +c.repair_quote; quoted++; } else { const m = String(c.repair_note || "").match(/est\. \$([0-9.]+)/); if(m) amt += +m[1]; } }); return { cards: rc.length, amt: Math.round(amt * 100) / 100, allQuoted: rc.length > 0 && quoted === rc.length }; })();
+  // Amount owed: an existing repair_quote, otherwise the check-in estimate (numeric field, or the note).
+  const rep = PBG.orderRepairAmount(o.cards);
+  const cust = PBG.customerTotal(o);
+  const owedRR = Math.round(((+o.rr_share || 0) + rep.amt) * 100) / 100;
   const hammer = o.cards.reduce((a, c) => a + (+c.hammer_price || 0), 0);
   const workWords = [o.cards.some(c => c.clean) && "prep", o.cards.some(c => c.eval) && "pre-grade evaluation", o.cards.some(c => c.repair) && "repair"].filter(Boolean);
   const workList = workWords.length < 2 ? (workWords[0] || "partner work") : workWords.length === 2 ? workWords.join(" and ") : workWords.slice(0, -1).join(", ") + ", and " + workWords[workWords.length - 1];
@@ -447,13 +462,12 @@ async function detail(id){
           ${partner ? "" : `<div><span>Pay the customer by</span><b>${esc(o.payout_method || "Not set")}${o.payout_details ? ": " + esc(o.payout_details) : ""}</b></div>
           <div><span>Hammer total, owed to customer</span><b>${money(hammer)}</b></div>`}` : ""}
           ${o.if_low_grade ? `<div><span>If evaluation is low</span><b>${esc({call:"Call customer first",submit:"Submit anyway",return:"Return ungraded"}[o.if_low_grade] || o.if_low_grade)}</b></div>` : ""}
-          ${partner ? "" : `<div><span>${rep.amt ? "PBG total" : "Total"}</span><b>${money(o.total)} ${o.payment_when === "pickup" ? "due at pickup" : "paid"}</b></div>`}
-          ${rep.cards ? `<div><span>Restored Rarity repairs (${rep.cards})</span><b>${rep.amt ? (rep.allQuoted ? "" : "About ") + money(rep.amt) : "Not priced yet"}</b><small style="display:block;color:var(--steel);font-size:12px">${rep.allQuoted ? "Restored Rarity's quote" : "Estimate with PBG 10% off"}${o.repair_paid ? "" : ", billed by Restored Rarity"}</small></div>
-          ${o.repair_paid ? `<div><span>Repairs paid at PBG</span><b>${money(o.repair_paid)}</b><small style="display:block;color:var(--steel);font-size:12px">${o.repair_paid_method ? esc(o.repair_paid_method) + ", " : ""}${fmtDate(o.repair_paid_at)}. Owed to Restored Rarity.</small></div>
-            ${partner ? "" : `<div><span>Customer paid in total</span><b>${money(+o.total + +o.repair_paid)}</b></div>`}`
-          : rep.amt && !partner ? `<div><span>Customer total with repairs</span><b>${rep.allQuoted ? "" : "About "}${money(+o.total + rep.amt)}</b></div>` : ""}` : ""}
+          ${partner ? "" : `<div><span>Total</span><b>${money(cust)} ${o.payment_when === "pickup" ? "due at pickup" : "paid at drop-off"}</b>${rep.amt ? `<small style="display:block;color:var(--steel);font-size:12px">Includes repairs.</small>` : ""}</div>`}
+          ${rep.cards ? `<div><span>Restored Rarity repairs (${rep.cards})</span><b>${rep.amt ? money(rep.amt) : "Not priced yet"}</b><small style="display:block;color:var(--steel);font-size:12px">${rep.legacy ? "Includes a quote entered earlier. " : ""}${rep.estimated ? "Estimate with PBG's 10% off. " : ""}Collected at PBG at payment. Adjust later if Restored Rarity's final price differs.</small></div>
+          ${o.repair_paid ? `<div><span>Repairs collected</span><b>${money(o.repair_paid)}</b><small style="display:block;color:var(--steel);font-size:12px">${o.repair_paid_method ? esc(o.repair_paid_method) + ", " : ""}${fmtDate(o.repair_paid_at)}. Recorded collection. The amount owed is the earlier quote or the estimate.</small></div>` : ""}` : ""}
           ${me.role === "owner" ? `<div><span>Owed to ${o.grader === "None" ? "grader" : esc(PBG.graderName(o.grader))}</span><b>${money(o.grader_fees)}</b></div><div><span>PBG share</span><b>${money(o.pbg_share)}</b></div>` : ""}
-          ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity services</span><b>${money(o.rr_share)}</b><small style="display:block;color:var(--steel);font-size:12px">Grading, evaluations, prep and gem services. Repair money collected at PBG is separate.</small></div>` : ""}
+          ${["owner","partner"].includes(me.role) ? `<div><span>Restored Rarity services</span><b>${money(o.rr_share)}</b><small style="display:block;color:var(--steel);font-size:12px">Grading, evaluations, prep and gem services.</small></div>
+          <div><span>Owed to Restored Rarity</span><b>${money(owedRR)}</b><small style="display:block;color:var(--steel);font-size:12px">Services ${money(o.rr_share)} + repairs ${money(rep.amt)}. Owed from check-in.</small></div>` : ""}
         </div>
         ${rep.cards && !partner ? `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">${o.repair_paid
             ? (me.role === "owner" ? `<button class="btn btn-line btn-sm" id="repUndo">Undo repair payment</button>` : "")
@@ -482,7 +496,7 @@ async function detail(id){
             <div class="tags">${c.gem ? `<span class="tag" style="background:#FFF4CC;color:#7A5A00">Gem service ${c.gem_fee ? money(c.gem_fee) : ""} + mag case</span>` : ""}${c.mag_case ? '<span class="tag" style="background:#E6EEF8;color:#1F3B63">Mag slab case: hand over at pickup</span>' : ""}${c.eval ? '<span class="tag">Full evaluation</span>' : ""}${c.clean ? '<span class="tag">Prep</span>' : ""}${c.repair ? `<span class="tag">Restored Rarity repair${c.repair_note ? ": " + esc(c.repair_note) : ""}</span>` : ""}</div>
             <div class="cf">
               ${c.eval || partner ? `<label class="f wide">Full evaluation result<input class="t" data-f="eval_result" value="${esc(c.eval_result)}" placeholder="e.g. Strong 9, light edge wear"></label>` : ""}
-              ${c.repair ? `<label class="f">Repair quote $<input class="t" data-f="repair_quote" type="number" inputmode="decimal" value="${esc(c.repair_quote)}"></label>` : ""}
+              ${repairPriceField(c)}
               ${partner ? "" : `<label class="f">Grade<input class="t" data-f="grade" value="${esc(c.grade)}" placeholder="${esc(o.grader === "None" ? "" : "e.g. " + PBG.graderName(o.grader) + " 10")}"></label>
               <label class="f">Cert number<input class="t" data-f="cert_number" value="${esc(c.cert_number)}"></label>
               <label class="f">Card status<input class="t" data-f="card_status" value="${esc(c.card_status)}" placeholder="e.g. Pulled, returned ungraded"></label>
@@ -561,7 +575,7 @@ async function detail(id){
     catch(e){ toast(/repair_paid/.test(e.message) ? "Recording repair payments needs a database update (update-2026-11-16-repair-paid.sql)." : e.message); }
   };
   const ru = $("#repUndo"); if(ru) ru.onclick = async () => {
-    if(!await confirmBox("Undo the repair payment?", `${money(o.repair_paid)} will no longer count as collected or owed to Restored Rarity.`, "Undo")) return;
+    if(!await confirmBox("Undo the repair payment?", `${money(o.repair_paid)} will no longer count as collected. The repair amount stays owed to Restored Rarity.`, "Undo")) return;
     try{ await PBG.updateOrder(o.id, { repair_paid: null, repair_paid_at: null, repair_paid_method: null }); toast("Repair payment removed"); route(); }catch(e){ toast(e.message); }
   };
   const del = $("#delOrder"); if(del) del.onclick = async () => {
@@ -630,7 +644,7 @@ async function detail(id){
 function finalNoticeLetter(o){
   const p = pickup(o) || { readyAt: o.ready_at, cards: o.cards.length, fee: 0 };
   const sent = new Date(), deadline = o.pickup_deadline ? new Date(o.pickup_deadline + "T12:00:00") : addDays(sent, PICKUP.noticePeriodDays);
-  const unpaid = o.payment_when === "pickup" ? +o.total || 0 : 0;
+  const unpaid = o.payment_when === "pickup" ? PBG.customerTotal(o) : 0;
   const dropoffPaid = o.payment_when === "pickup" ? 0 : (+o.grade_each || 0) * (+o.graded_count || 0);
   const longDate = d => new Date(d).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
   const w = window.open("", "_blank"); if(!w){ toast("Allow pop-ups to print the letter."); return; }
@@ -737,15 +751,20 @@ async function rrLedger(){
   const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`, owner = me.role === "owner";
   box.innerHTML = `<div class="panel" style="margin-top:16px"><div class="empty">Loading the Restored Rarity payout log…</div></div>`;
   let earnedAll, paidAll;
-  try{ [earnedAll, paidAll] = await Promise.all([PBG.payouts("2020-01-01", today), PBG.rrPayments()]); }
+  let repairPayRows = [];
+  try{ [earnedAll, paidAll, repairPayRows] = await Promise.all([PBG.payouts("2020-01-01", today), PBG.rrPayments(), PBG.repairPayouts().catch(() => [])]); }
   catch(e){ box.innerHTML = `<div class="panel" style="margin-top:16px"><h2>Paid to Restored Rarity</h2><p style="margin-top:8px">${esc(e.message)}</p></div>`; return; }
   const yr = d => +String(d).slice(0, 4), mo = d => +String(d).slice(5, 7);
   const chiDay = t => new Date(t).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });   // YYYY-MM-DD in Central time
+  const owedKnown = !earnedAll.length || Object.prototype.hasOwnProperty.call(earnedAll[0], "repair_owed");
   const earned = earnedAll.map(r => ({ day: chiDay(r.created_at), amt: +r.rr_share || 0 }));
   const paid = paidAll.map(p => ({ ...p, amt: +p.amount || 0 }));
   const sum = a => a.reduce((x, r) => x + r.amt, 0);
+  const repairEarned = owedKnown ? earnedAll.reduce((a, r) => a + (+r.repair_owed || 0), 0) : null;
+  const repairPaidOut = (repairPayRows || []).reduce((a, p) => a + (+p.amount || 0), 0);
   const eY = earned.filter(r => yr(r.day) === year), pY = paid.filter(p => yr(p.paid_on) === year);
-  const owed = sum(earned) - sum(paid);
+  const serviceOwed = sum(earned) - sum(paid);
+  const owed = serviceOwed + (repairEarned == null ? 0 : repairEarned - repairPaidOut);
   const years = [...new Set([thisYear, ...earned.map(r => yr(r.day)), ...paid.map(p => yr(p.paid_on))])].sort((a, b) => b - a);
   let runE = sum(earned.filter(r => yr(r.day) < year)), runP = sum(paid.filter(p => yr(p.paid_on) < year));
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -760,9 +779,10 @@ async function rrLedger(){
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:10px">
       <label class="f" style="flex-direction:row;align-items:center;gap:8px">Year<select class="t" id="lYear" style="width:auto">${years.map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select></label></div>
     <div class="kv" style="margin:14px 0 0">
-      <div class="panel"><span>Earned in ${year}</span><b style="font-size:24px">${money(sum(eY))}</b><small style="display:block;color:var(--steel)">Service share of ${eY.length} order${eY.length === 1 ? "" : "s"}. Repairs collected at PBG are not included.</small></div>
-      <div class="panel"><span>Paid in ${year}</span><b style="font-size:24px">${money(sum(pY))}</b><small style="display:block;color:var(--steel)">${pY.length} payment${pY.length === 1 ? "" : "s"} logged</small></div>
-      <div class="panel" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>Owed right now</span><b style="font-size:24px">${money(Math.max(owed, 0))}</b><small style="display:block;color:var(--steel)">${owed < -0.004 ? `Paid ${money(-owed)} ahead` : "All orders ever, minus all payments"}</small></div>
+      <div class="panel"><span>Earned in ${year}</span><b style="font-size:24px">${money(sum(eY))}</b><small style="display:block;color:var(--steel)">Service share of ${eY.length} order${eY.length === 1 ? "" : "s"}.</small></div>
+      <div class="panel"><span>Repairs owed</span><b style="font-size:24px">${repairEarned == null ? "—" : money(repairEarned)}</b><small style="display:block;color:var(--steel)">${repairEarned == null ? "Run update-2026-11-25-repair-estimates.sql. Until then this panel's owed total is the service share only." : `All time, from check-in. Earlier quote if typed, otherwise the estimate. Paid out to Scott: ${money(repairPaidOut)}.`}</small></div>
+      <div class="panel"><span>Paid in ${year}</span><b style="font-size:24px">${money(sum(pY))}</b><small style="display:block;color:var(--steel)">${pY.length} service payment${pY.length === 1 ? "" : "s"} logged</small></div>
+      <div class="panel" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>Owed to Restored Rarity</span><b style="font-size:24px">${money(Math.max(owed, 0))}</b><small style="display:block;color:var(--steel)">${owed < -0.004 ? `Paid ${money(-owed)} ahead` : "Service share still unpaid, plus repairs still unpaid"}</small></div>
     </div>
     <div class="table" style="margin-top:16px">
       <div class="row h" style="grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;cursor:default"><span>Month</span><span>Earned</span><span>Paid</span><span>Paid so far in ${year}</span><span>Owed at month end</span></div>
@@ -780,7 +800,7 @@ async function rrLedger(){
       <div class="row h" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>Date</span><span>Amount</span><span>Method</span><span>Reference</span><span>Logged by</span><span></span></div>
       ${pY.length ? pY.map(p => `<div class="row" style="grid-template-columns:.9fr .8fr .9fr 2fr .9fr .5fr;cursor:default"><span>${fmtDate(p.paid_on + "T12:00:00")}</span><span><b>${money(p.amt)}</b></span><span>${esc(p.method || "")}</span><span>${esc([p.reference, p.note].filter(Boolean).join(" · "))}</span><span>${esc(p.created_by || "")}</span><span>${owner ? `<button class="btn btn-line btn-sm" data-delpay="${esc(p.id)}">Delete</button>` : ""}</span></div>`).join("") : `<div class="empty">No payments logged in ${year}.</div>`}
     </div>
-    <p style="color:var(--steel);font-size:13px;margin-top:10px" data-end>Earned = Restored Rarity's share of grading, evaluations, prep and gem services, counted on the check-in date. Repair money customers paid at PBG is not in this total. That balance, and what PBG has paid Scott for it, is in Repair payouts above. Owners and Restored Rarity can log these service payments; only an owner can delete one.</p>
+    <p style="color:var(--steel);font-size:13px;margin-top:10px" data-end>The monthly table is the service share (grading, evaluations, prep and gem services), counted on the check-in date. Repair amounts are owed from check-in as well: an earlier quote if one was typed, otherwise the estimate. Owed to Restored Rarity adds those repairs and subtracts repair payouts recorded above. This payment log is the service share only. Owners and Restored Rarity can log these service payments; only an owner can delete one.</p>
   </details>`;
   const lb = $("#ledgerBox"), arrow = () => { lb.querySelector("summary h2").textContent = (lb.open ? "▾ " : "▸ ") + "Paid to Restored Rarity"; };
   arrow(); lb.addEventListener("toggle", () => { arrow(); try{ localStorage.setItem("pbg.ledgerOpen", lb.open ? "1" : "0"); }catch(_){} });
@@ -816,6 +836,8 @@ async function repairLedger(){
   try{ [summary, rows] = await Promise.all([PBG.repairPayoutSummary(), PBG.repairPayouts()]); }
   catch(e){ box.innerHTML = `<div class="panel" style="margin-top:16px;border-color:#5B3FA8"><h2>Repair payouts</h2><p style="margin-top:8px">${esc(e.message)}</p></div>`; return; }
   const due = +summary.repairs_due || 0, paid = +summary.payouts_recorded || 0, owed = +summary.still_owed || 0;
+  const legacy = summary.repairs_collected == null;
+  const collected = legacy ? due : (+summary.repairs_collected || 0);
   const asc = rows.slice().sort((a, b) => String(a.paid_on).localeCompare(String(b.paid_on)) || String(a.created_at).localeCompare(String(b.created_at)));
   let left = due; const after = new Map();
   asc.forEach(p => { left = Math.round((left - (+p.amount || 0)) * 100) / 100; after.set(p.id, left); });
@@ -826,11 +848,13 @@ async function repairLedger(){
   const balText = n => n < -0.004 ? "Ahead " + money(-n) : money(Math.max(n, 0));
   box.innerHTML = `<div class="panel" id="repairPanel" style="margin-top:16px;border-color:#5B3FA8">
     <h2>Repair payouts</h2>
-    <p style="margin-top:8px;color:var(--steel);font-size:14px">Money customers paid PBG for Restored Rarity repairs. This is Scott's repair total. It is not added to grading fees or to Restored Rarity's share of grading, evaluations, prep and gem services.</p>
+    <p style="margin-top:8px;color:var(--steel);font-size:14px">Repair amounts owed to Scott from check-in: a quote already typed on the card, otherwise the check-in estimate. Owed right away, not only after the customer payment is recorded. Not added to grading fees or to Restored Rarity's service share. The collected figure is separate.</p>
+    ${legacy ? `<p class="notice" style="margin-top:10px">This database still counts only repair payments already recorded. Run supabase/update-2026-11-25-repair-estimates.sql so quotes and estimates are owed from check-in.</p>` : ""}
     <div class="kv" style="margin:14px 0 0">
-      <div class="panel" id="repairsDue"><span>Repairs due</span><b style="font-size:24px">${money(due)}</b><small style="display:block;color:var(--steel)">Collected at PBG, all time. Owed to Scott.</small></div>
+      <div class="panel" id="repairsDue"><span>${legacy ? "Repairs due" : "Repairs owed"}</span><b style="font-size:24px">${money(due)}</b><small style="display:block;color:var(--steel)">${legacy ? "Collected at PBG, all time, until the database update." : "All time. Earlier quote if one was typed, otherwise the estimate."}</small></div>
+      ${legacy ? "" : `<div class="panel" id="repairsCollected"><span>Collected from customers</span><b style="font-size:24px">${money(collected)}</b><small style="display:block;color:var(--steel)">orders.repair_paid. The collected figure, not the amount owed.</small></div>`}
       <div class="panel"><span>Paid out</span><b style="font-size:24px">${money(paid)}</b><small style="display:block;color:var(--steel)">${rows.length} payout${rows.length === 1 ? "" : "s"} recorded</small></div>
-      <div class="panel" id="repairsOwed" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>${owedTitle}</span><b style="font-size:24px">${money(Math.abs(owed))}</b><small style="display:block;color:var(--steel)">Repairs due minus payouts recorded</small></div>
+      <div class="panel" id="repairsOwed" style="${owed > 0.004 ? "border-color:#E3A008" : ""}"><span>${owedTitle}</span><b style="font-size:24px">${money(Math.abs(owed))}</b><small style="display:block;color:var(--steel)">Repairs owed minus payouts recorded</small></div>
     </div>
     <div class="table" style="margin-top:16px">
       <div class="row h" style="grid-template-columns:${unlocked ? ".9fr .8fr 2fr .9fr 1fr .7fr" : ".9fr .8fr 2fr .9fr 1fr"};cursor:default"><span>Date</span><span>Amount</span><span>Note</span><span>Recorded by</span><span>Still owed after</span>${unlocked ? "<span></span>" : ""}</div>
@@ -906,21 +930,23 @@ async function payouts(){
   rrLedger();
   let rows; try{ rows = await PBG.payouts(from, to); }catch(e){ $("#pbody").innerHTML = `<div class="panel">${esc(e.message)}</div>`; return; }
   const sum = k => rows.reduce((a, r) => a + (+r[k] || 0), 0);
-  const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share"), rep: sum("repair_paid"), g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
+  const owedKnown = !rows.length || Object.prototype.hasOwnProperty.call(rows[0], "repair_owed");
+  const tot = { total: sum("total"), tax: sum("tax"), fees: sum("grader_fees"), pbg: sum("pbg_share"), rr: sum("rr_share"), rep: sum("repair_paid"), repairOwed: owedKnown ? sum("repair_owed") : null, g: sum("graded_count"), e: sum("eval_count"), p: sum("prep_count"), gm: sum("gem_count"), mg: sum("mag_count"), mgf: sum("mag_fees") };
   const byGrader = {}; rows.forEach(r => { if(r.grader === "None") return; byGrader[r.grader] = (byGrader[r.grader] || 0) + (+r.grader_fees || 0); });
   $("#pbody").innerHTML = `
     <div class="kv" style="margin:0 0 16px">
-      ${partner ? "" : `<div class="panel"><span>Customer sales</span><b style="font-size:24px">${money(tot.total)}</b><small style="display:block;color:var(--steel)">incl. ${money(tot.tax)} tax</small></div>
+      ${partner ? "" : `<div class="panel"><span>Customer sales</span><b style="font-size:24px">${money(tot.total)}</b><small style="display:block;color:var(--steel)">incl. ${money(tot.tax)} tax. Includes repairs after they are folded into the ticket total.</small></div>
       <div class="panel"><span>Owed to grading companies</span><b style="font-size:24px">${money(tot.fees)}</b><small style="display:block;color:var(--steel)">${Object.entries(byGrader).map(([g, v]) => esc(PBG.graderName(g)) + " " + money(v)).join(", ") || "None"}</small></div>
       <div class="panel"><span>PBG share</span><b style="font-size:24px">${money(tot.pbg)}</b><small style="display:block;color:var(--steel)">incl. ${tot.mg} mag slab case${tot.mg===1?"":"s"} (${money(tot.mgf)})</small></div>`}
-      <div class="panel" style="border-color:#8E6CF0"><span>Restored Rarity services</span><b style="font-size:24px">${money(tot.rr)}</b><small style="display:block;color:var(--steel)">${tot.g} graded cards, ${tot.e} full evaluations, ${tot.p} preps, ${tot.gm} gem services. Not repairs.</small></div>
-      <div class="panel" id="repairDates" style="border-color:#5B3FA8"><span>Repairs collected at PBG</span><b style="font-size:24px">${money(tot.rep)}</b><small style="display:block;color:var(--steel)">These dates, by check-in. Owed to Scott. Not part of the services share. The all-time balance is above.</small></div>
+      <div class="panel" style="border-color:#8E6CF0"><span>Restored Rarity services</span><b style="font-size:24px">${money(tot.rr)}</b><small style="display:block;color:var(--steel)">${tot.g} graded cards, ${tot.e} full evaluations, ${tot.p} preps, ${tot.gm} gem services.</small></div>
+      <div class="panel" id="repairDates" style="border-color:#5B3FA8"><span>Repairs owed</span><b style="font-size:24px">${tot.repairOwed == null ? "—" : money(tot.repairOwed)}</b><small style="display:block;color:var(--steel)">${tot.repairOwed == null ? `Run update-2026-11-25-repair-estimates.sql to count quotes and estimates from check-in. Collected ${money(tot.rep)} is recorded.` : `These dates, from check-in. Earlier quote if typed, otherwise the estimate. Collected ${money(tot.rep)}. Not part of the service split.`}</small></div>
+      <div class="panel" id="owedRR"><span>Owed to Restored Rarity</span><b style="font-size:24px">${money(tot.rr + (tot.repairOwed || 0))}</b><small style="display:block;color:var(--steel)">Services plus repairs${tot.repairOwed == null ? " (repairs join after the database update)" : ""}, these dates, before payments.</small></div>
     </div>
     <div class="table">
       <div class="row h" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default"><span>Ticket</span><span>Date</span><span>Company</span><span>Graded</span><span>Evals / preps / gems</span><span>Mags</span><span>${partner ? "" : "Grader fees"}</span><span>${partner ? "" : "PBG"}</span><span>Restored Rarity</span></div>
       ${rows.length ? rows.map(r => `<div class="row" style="grid-template-columns:1.2fr .9fr .9fr .6fr .6fr .6fr .8fr .8fr .8fr;cursor:default">
         <span class="tk">${esc(r.ticket)}</span><span>${fmtDate(r.created_at)}</span><span>${r.grader === "None" ? "Prep only" : esc(PBG.graderName(r.grader) + " " + (r.tier || ""))}</span>
-        <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money(r.rr_share)}</b>${+r.repair_paid ? `<small style="display:block;color:var(--steel);font-size:11px">Repairs collected ${money(r.repair_paid)}</small>` : ""}</span></div>`).join("")
+        <span>${r.graded_count}</span><span>${r.eval_count} / ${r.prep_count} / ${r.gem_count || 0}</span><span>${r.mag_count || 0}</span><span>${partner ? "" : money(r.grader_fees)}</span><span>${partner ? "" : money(r.pbg_share)}</span><span><b>${money((+r.rr_share || 0) + (owedKnown ? +r.repair_owed || 0 : 0))}</b><small style="display:block;color:var(--steel);font-size:11px">Services ${money(r.rr_share)}</small>${owedKnown && +r.repair_owed ? `<small style="display:block;color:var(--steel);font-size:11px">Repairs owed ${money(r.repair_owed)}</small>` : ""}${+r.repair_paid ? `<small style="display:block;color:var(--steel);font-size:11px">Repairs collected ${money(r.repair_paid)}</small>` : ""}</span></div>`).join("")
         : `<div class="empty">No orders in these dates.</div>`}
     </div>
     <div style="margin-top:14px;display:flex;gap:10px"><button class="btn btn-line btn-sm" id="pcsv">Copy as CSV</button></div>
@@ -928,9 +954,9 @@ async function payouts(){
   PBG.getPricing().then(p => { const r = p && p.rules; if(!r) return; const sp = r.split, m = n => "$" + (+n).toFixed(0);
     $("#splitNote").textContent = `Current split: ${m(sp.pbgPerGrade)} PBG and ${m(sp.rrPerGrade)} Restored Rarity per graded card (${m(r.markup)} handling); full evaluation ${m(r.evalPrice)} (PBG ${m(sp.pbgPerEval)}, Restored Rarity ${m(r.evalPrice - sp.pbgPerEval)}); prep ${m(r.prepPrice)} (PBG ${m(sp.pbgPerPrep)}, Restored Rarity ${m(r.prepPrice - sp.pbgPerPrep)}); gem service ${r.gemTiers.map(t => m(t.fee) + " over " + m(t.over)).join(", ")} (PBG ${sp.pbgGemPct}%, Restored Rarity ${100 - sp.pbgGemPct}%); magnetic slab case ${m(r.magPrice ?? 15)} (PBG ${sp.pbgMagPct ?? 100}%${(sp.pbgMagPct ?? 100) < 100 ? ", Restored Rarity " + (100 - sp.pbgMagPct) + "%" : ""}). The order system calculates the shares when each order comes in, and past orders keep theirs. Sales tax isn't part of the split.`; }).catch(() => {});
   $("#pcsv").onclick = async () => {
-    const head = ["Ticket","Date","Company","Level","Graded","Full evals","Preps","Gem services","Mag cases"].concat(partner ? ["Restored Rarity services","Repairs collected"] : ["Total","Tax","Grader fees","PBG","Restored Rarity services","Repairs collected"]);
+    const head = ["Ticket","Date","Company","Level","Graded","Full evals","Preps","Gem services","Mag cases"].concat(partner ? ["Restored Rarity services","Repairs owed","Repairs collected","Owed to Restored Rarity"] : ["Total","Tax","Grader fees","PBG","Restored Rarity services","Repairs owed","Repairs collected","Owed to Restored Rarity"]);
     const lines = [head].concat(rows.map(r => [r.ticket, r.created_at.slice(0,10), r.grader, r.tier || "", r.graded_count, r.eval_count, r.prep_count, r.gem_count || 0, r.mag_count || 0]
-      .concat(partner ? [r.rr_share, r.repair_paid || 0] : [r.total, r.tax, r.grader_fees, r.pbg_share, r.rr_share, r.repair_paid || 0])));
+      .concat(partner ? [r.rr_share, r.repair_owed || 0, r.repair_paid || 0, (+r.rr_share || 0) + (+r.repair_owed || 0)] : [r.total, r.tax, r.grader_fees, r.pbg_share, r.rr_share, r.repair_owed || 0, r.repair_paid || 0, (+r.rr_share || 0) + (+r.repair_owed || 0)])));
     const csv = lines.map(l => l.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
     try{ await navigator.clipboard.writeText(csv); toast("CSV copied"); }catch(e){ toast("Couldn't copy here"); }
   };

@@ -1,12 +1,14 @@
-# HANDOFF: repair payouts and Restored Rarity orders
+# HANDOFF: repair estimates collected at PBG
 
 The rest of the shop setup (Supabase, iPad, email, website) is in [SETUP.md](SETUP.md). This note is the part Scott runs himself.
 
 ## 1. Run the database update
 
-In the PBG Supabase project: **SQL Editor > New query**, paste `supabase/update-2026-11-19-repair-payouts.sql`, and click **Run**. It is safe to run again. It does not contain a code.
+In the PBG Supabase project: **SQL Editor > New query**, paste `supabase/update-2026-11-25-repair-estimates.sql`, and click **Run**. It is safe to run again. It does not contain a code.
 
-Until this has been run, the staff portal's Repair payouts panel says the database update is needed.
+Run it after `supabase/update-2026-11-19-repair-payouts.sql` (and the two 2026-11-16 files before that, if those were never run). The new file adds `cards.repair_estimate`, fills it from existing notes that say `est. $X`, and folds each card's repair amount into that order's subtotal and total once.
+
+Until this has been run, the customer status page for an estimate-only order still shows the old ticket total, and the Repair payouts panel still counts only money already recorded as collected. The staff order page already adds the amount (an earlier quote, or the estimate parsed from the note).
 
 ## 2. Set or change Scott's payout code
 
@@ -26,13 +28,19 @@ Demo mode (no Supabase URL) uses the code `demo-repairs`. That string is not the
 
 ## 3. What the repair total means
 
-**Repairs due** is the sum of repair payments recorded on PBG orders (`orders.repair_paid`). It is calculated in the database (`repair_payout_summary`) and shown on its own. It is not added to:
+PBG collects the repair from the customer at payment (drop-off or pickup), as part of the ticket total. The amount for each repair card is:
 
-- customer grading / submission totals
-- money owed to grading companies
-- Restored Rarity's service share (graded cards, evaluations, prep, gem services)
+- **Quoted earlier:** `cards.repair_quote` when a quote was already typed on that card. That amount is kept. Staff cannot change it. New cards do not get a typed quote.
+- **Otherwise the check-in estimate:** `cards.repair_estimate`, or `est. $X` in `cards.repair_note` until the column is filled. The estimate is Restored Rarity's Base ($35) or Major ($50) repair, plus the value surcharge (0% up to $250, 10% for $251–$1,500, 12% for $1,501–$3,000, rounded up to the dollar), then 10% off. Cards over $3,000 have no estimate.
+- **Over $3,000 only:** staff can enter **RR custom quote (cards over $3,000)**. That saved quote is the amount.
 
-**Still owed** = repairs due minus payouts Scott has recorded. The service-share log under it ("Paid to Restored Rarity") no longer includes repair collections. If a payment already logged there was partly for repairs, delete it (owner) and record the repair part under Repair payouts.
+**Repairs owed** is that amount, from check-in, not only after someone records `orders.repair_paid`. **Repairs collected** is `orders.repair_paid`, the collected figure. The "Customer paid the repairs at PBG" box starts at the amount owed.
+
+**Owed to Restored Rarity** on an order is `orders.rr_share` plus the repair amounts. Repairs are not inside `rr_share` (the grading, evaluation, prep and gem split). The payout screens add them on top, from check-in. **Still owed** on Repair payouts = repairs owed minus payouts Scott has recorded.
+
+Sales tax is not applied to repairs. [to confirm]
+
+**Still owed** on the service-share log ("Paid to Restored Rarity") is the unpaid service share plus repairs still unpaid. Repair payouts stay in the Repair payouts log. If a service payment already logged there was partly for repairs, delete it (owner) and record the repair part under Repair payouts.
 
 ## 4. Restored Rarity orders from the iPad
 
@@ -45,4 +53,4 @@ When a PBG check-in has prep, a pre-grade evaluation, or a repair, the iPad open
 
 The staff portal shows both: "Restored Rarity order RR-… is tied to PBG ticket PBG-…". A retry does not open a second Restored Rarity order. Orders that were already sent before this change are left as they are.
 
-Prep and pre-grade evaluation are paid at PBG. The Restored Rarity order is the work ticket. Repairs are still quoted by Restored Rarity.
+Prep and pre-grade evaluation are paid at PBG. The Restored Rarity order is the work ticket. The repair estimate is also collected at PBG at payment. Adjust later if Restored Rarity's final price differs. A card over $3,000 waits for the custom quote.

@@ -13,10 +13,10 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <script src="../pbg-config.js?v=20261116a"></script>
-<script src="../pbg-api.js?v=20261119a"></script>
-<script src="../terms.js?v=20261116e"></script>
+<script src="../pbg-api.js?v=20261125a"></script>
+<script src="../terms.js?v=20261125a"></script>
 <script src="cardsearch.js?v=20261116a"></script>
-<script src="rr-push.js?v=20261119a"></script>
+<script src="rr-push.js?v=20261125a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
@@ -220,7 +220,7 @@ table.sum td.n,table.sum th.n{text-align:right;white-space:nowrap}
 const DEFAULTS = {
   pin: "1234",                          // manager PIN for the Staff menu
   employees: [],                        // [{ name, hash }] 4-digit codes, stored hashed
-  taxRate: 0,                           // percent, applied to the whole ticket
+  taxRate: 0,                           // percent, applied to the ticket except repair estimates
   // Customer price for grading = the grading company's fee + markup.
   markup: 20,                           // added to every graded card
   evalPrice: 17,                        // Full evaluation with magnification (Restored Rarity)
@@ -426,10 +426,13 @@ function calc(){
   const gradingTotal = r2(gradeEach * gradedCards), cleaning = r2(prepCount * settings.prepPrice), evals = r2(evalCount * settings.evalPrice);
   const gems = r2(gemTotal), gemPbg = r2(gems * (+sp.pbgGemPct || 0) / 100), gemRr = r2(gems - gemPbg);
   const mags = r2(magCount * (+settings.magPrice || 0)), magPbg = r2(mags * (sp.pbgMagPct ?? 100) / 100), magRr = r2(mags - magPbg);
-  const subtotal = r2(gradingTotal + cleaning + evals + gems + mags), tax = r2(subtotal * (+settings.taxRate || 0) / 100);
+  const repairTotal = repairEstimate(sub.cards);
+  // Repairs are in the customer total. They are not in the sales-tax base.
+  const pretax = r2(gradingTotal + cleaning + evals + gems + mags), tax = r2(pretax * (+settings.taxRate || 0) / 100);
+  const subtotal = r2(pretax + repairTotal);
   const pbgShare = r2(gradedCards * sp.pbgPerGrade + evalCount * sp.pbgPerEval + prepCount * sp.pbgPerPrep + gemPbg + magPbg);
   const rrShare  = r2(gradedCards * sp.rrPerGrade + evalCount * (settings.evalPrice - sp.pbgPerEval) + prepCount * (settings.prepPrice - sp.pbgPerPrep) + gemRr + magRr);
-  return { gradeEach, fee, markup, grading: gradingTotal, cleaning, evals, repairs, subtotal, tax, total: r2(subtotal + tax), count: sub.cards.length,
+  return { gradeEach, fee, markup, grading: gradingTotal, cleaning, evals, repairs, repairTotal, subtotal, tax, total: r2(subtotal + tax), count: sub.cards.length,
     gemCount, gems, magCount, mags, gradedCards, prepCount, evalCount, graderFees: r2(fee * gradedCards), markupTotal: r2(markup * gradedCards), pbgShare, rrShare };
 }
 const hasPartnerWork = s => s.cards.some(c => c.clean || c.eval || c.repair);
@@ -646,7 +649,7 @@ function cardEditor(idx){
         <div class="grid" style="margin-top:6px">
           <label class="toggle"><input type="checkbox" id="clean" ${c.clean?"checked":""}><div><b>Prep</b><span>Cleaning and grading prep by a restoration professional who knows each grading company's requirements.</span></div><span class="amt">${money(settings.prepPrice)}</span></label>
           <label class="toggle"><input type="checkbox" id="eval" ${c.eval?"checked":""}><div><b>Full evaluation with magnification <small style="color:var(--red);font-weight:800">PBG partner rate</small></b><span>A professional pre-grader checks centering, corners, edges and surface under magnification before it ships.</span></div><span class="amt">${money(settings.evalPrice)}</span></label>
-          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity <small style="color:var(--red);font-weight:800">${RR.discount()}% off for PBG customers</small></b><span>Sent to Restored Rarity as its own repair submission. Restored Rarity confirms the price after inspecting the card and bills it directly; nothing is done without your OK.</span></div><span class="amt">${RR.discount()}% off</span></label>
+          <label class="toggle"><input type="checkbox" id="repair" ${c.repair?"checked":""}><div><b>Repair by Restored Rarity <small style="color:var(--red);font-weight:800">${RR.discount()}% off for PBG customers</small></b><span>Sent to Restored Rarity for the work. PBG collects the estimate at payment: Restored Rarity's price plus the value surcharge, with ${RR.discount()}% off. Adjust later if Restored Rarity's final price differs. Nothing is done without your OK.</span></div><span class="amt">${RR.discount()}% off</span></label>
           <div id="rnWrap" ${c.repair?"":"hidden"} class="grid g2">
             <label class="f" style="grid-column:1/-1">Repair type<select class="t" id="repairType">${RR.repairs().map(r => { const sel = c.repairType === r.title || RR.REPAIR_SERVICE[c.repairType] === r.title; return `<option value="${esc(r.title)}" ${sel?"selected":""}>${esc(r.title)}: ${money(r.price)} + value surcharge</option>`; }).join("")}<option value="unsure" ${c.repairType==="unsure"?"selected":""}>Not sure, needs a look (Restored Rarity quotes it)</option></select></label>
             <label class="f" style="grid-column:1/-1">What needs fixing?<input class="t" id="repairNote" value="${esc(c.repairNote)}" placeholder="e.g. light crease, bent corner"></label>
@@ -661,7 +664,7 @@ function cardEditor(idx){
       $("#nameLbl", m).firstChild.textContent = (c.category==="Sports" ? "Player" : "Card name") + " "; $("#name", m).placeholder = c.category==="Sports" ? "e.g. Shohei Ohtani" : "e.g. Charizard ex"; };
     $("#repair", m).onchange = e => $("#rnWrap", m).hidden = !e.target.checked;
     const repairEst = () => { const v = $("#value", m).value, q = RR.quote($("#repairType", m).value, v), el = $("#repairEst", m);
-      const foot = `<br><small>An estimate from Restored Rarity's current prices. The surcharge is based on the card's value with normal wear, not counting the damage being repaired. Restored Rarity confirms the final price after inspecting the card, before any work starts.</small>`;
+      const foot = `<br><small>An estimate from Restored Rarity's current prices, with PBG's ${RR.discount()}% off, collected at PBG at payment. The surcharge uses the card's value with normal wear, not the damage being repaired. Adjust later if Restored Rarity's final price differs.</small>`;
       if(!q){ el.innerHTML = `Restored Rarity will look at the card and send a quote before any work starts. PBG customers get ${RR.discount()}% off Restored Rarity's total (repair plus any card-value surcharge).`; return; }
       if(q.custom){ el.innerHTML = `<b>${esc(q.title)}: custom quote.</b> Cards valued over ${money(q.over)} get a custom repair quote from Restored Rarity. PBG customers still get ${q.off}% off that quote.${foot}`; return; }
       const lines = [`${esc(q.title)}: ${money(q.base)}`, q.surcharge ? `Card-value surcharge (${q.rate}% of ${money(+v)}, rounded up): ${money(q.surcharge)}` : `Card-value surcharge: none${+v ? "" : " (enter the declared value above)"}`,
@@ -733,7 +736,7 @@ function review(){
         ${t.cleaning ? `<div><span>Prep (${t.prepCount})</span><span>${money(t.cleaning)}</span></div>` : ""}
         ${t.gems ? `<div><span>Gem service with magnetic case (${t.gemCount})</span><span>${money(t.gems)}</span></div>` : ""}
         ${t.mags ? `<div><span>Magnetic slab cases, at pickup (${t.magCount})</span><span>${money(t.mags)}</span></div>` : ""}
-        ${t.repairs ? `<div><span>Repairs by Restored Rarity (${t.repairs}), estimate with ${RR.discount()}% PBG discount<br><small style="color:var(--steel)">Not included in today's total. Restored Rarity confirms the price and bills you directly.</small></span><span>${repairEstimate(sub.cards) ? (sub.cards.some(c => c.repair && !c.repairPrice) ? "From " : "About ") + money(repairEstimate(sub.cards)) : "Quoted by Restored Rarity"}</span></div>` : ""}
+        ${t.repairs ? `<div><span>Repairs by Restored Rarity (${t.repairs}), estimate with ${RR.discount()}% off<br><small style="color:var(--steel)">Collected at PBG with this payment. Based on Restored Rarity's prices with PBG's ${RR.discount()}% off. Adjust later if Restored Rarity's final price differs.${sub.cards.some(c => c.repair && !c.repairPrice) ? " Cards over $3,000 are a custom quote and are not in this total yet." : ""}</small></span><span>${t.repairTotal ? money(t.repairTotal) : "Custom quote"}</span></div>` : ""}
         ${A ? `<div><span>Auction consignment (${t.count})</span><span>No seller fee</span></div>` : ""}
         ${t.tax ? `<div><span>Tax</span><span>${money(t.tax)}</span></div>` : ""}
         <div class="grand"><span>Total</span><span>${money(t.total)}</span></div>
@@ -776,7 +779,7 @@ function review(){
       <label class="toggle" style="margin-top:10px"><input type="checkbox" id="agreeOwn" ${sub.agreedOwn?"checked":""}><div><b>These are my cards, and the check-in photos show their condition</b><span>I own these cards or have the owner's permission, they're genuine and not stolen as far as I know, and I've told PBG about any alteration I know of. The photos taken today are the record of each card's condition at drop-off (sections 4 and 5).</span></div></label>
       <label class="toggle" style="margin-top:10px;border:2px solid var(--red);border-radius:12px;padding:10px 12px"><input type="checkbox" id="agreePickup" ${sub.agreedPickup?"checked":""}><div><b>I understand the pickup policy</b><span>Free storage for ${PICKUP.freeDays} days after my ready notice, then $${PICKUP.feePerCardPerDay} per card per day. If I haven't picked up ${PICKUP.finalNoticeDay} days after the ready notice, PBG will send a final notice by certified mail. If I don't pick up and pay by that notice's deadline (day 90 or later), my cards become PBG's and may be sold from day 91. <b>PBG keeps the entire sale price, including anything above what I owe.</b> I can only ask for a refund of the grading fees I paid at drop-off.</span></div></label>
       ${A ? `<label class="toggle" style="margin-top:10px;border:2px solid var(--navy);border-radius:12px;padding:10px 12px"><input type="checkbox" id="agreeAuction" ${sub.agreedAuction?"checked":""}><div><b>I agree to the auction terms (section 13)</b><span>PBG consigns my cards to ${esc(houseName(A.house))} and may sign its consignment paperwork for me. I get 100% of the hammer price; any seller bonus the auction house pays goes to PBG. No price is guaranteed, and a card may not be withdrawable once it's sent. Payout transfer fees (wire or PayPal) come out of my payout, and a sale the buyer doesn't pay for or the auction house reverses pays nothing.${standalone ? " My slabs are genuine, untampered grading company holders." : ""}</span></div></label>` : ""}
-      ${sub.cards.some(c => c.repair) ? `<label class="toggle" style="margin-top:10px"><input type="checkbox" id="agreeRR" ${sub.agreedRR?"checked":""}><div><b>For my repair cards, I agree to Restored Rarity's Terms &amp; Conditions</b><span>Read them at restoredraritytcg.com. Restored Rarity will email or text you a quote before any work.</span></div></label>` : ""}
+      ${sub.cards.some(c => c.repair) ? `<label class="toggle" style="margin-top:10px"><input type="checkbox" id="agreeRR" ${sub.agreedRR?"checked":""}><div><b>For my repair cards, I agree to Restored Rarity's Terms &amp; Conditions</b><span>Read them at restoredraritytcg.com. PBG collects the estimate at payment. Restored Rarity confirms the work before starting, and the difference is adjusted later if their final price differs.</span></div></label>` : ""}
       <div style="margin-top:14px;max-width:480px">
         <label class="f">Your full name <span class="req">*</span><input class="t" id="signedName" value="${esc(sub.signedName || (c.first+" "+c.last))}"></label>
       </div>
@@ -905,7 +908,7 @@ function done(){
     <p>${t.count} card${t.count===1?"":"s"} ${sub.auction && sub.auction.mode === "standalone" ? `checked in for auction at ${esc(houseName(sub.auction.house))}` : sub.grader==="None" ? (sub.cards.every(x => x.repair && !x.clean && !x.eval) ? "checked in for a Restored Rarity repair" : "checked in for prep") : `for ${esc(sub.grader)} ${esc(sub.tier)}`}.${t.total > 0 ? ` Total ${money(t.total)}${sub.payment.when==="pickup" ? ", due at pickup" : ", paid"}.` : " Nothing is due at PBG."}</p>
     ${c.email ? `<p style="margin-top:6px">A copy of this receipt, with a link to your customer portal, is on its way to <b>${esc(c.email)}</b>.</p>` : ""}
     <p style="margin-top:6px">${sub.auction ? `Your cards go to ${esc(houseName(sub.auction.house))}${sub.auction.mode === "after_grading" ? " after grading" : ""}. You get 100% of the hammer price, paid by ${esc(sub.auction.payout === "PayPal" ? "PayPal" : "wire transfer")} once the auction house pays us.` : `We'll ${c.contact==="Email" ? "email" : c.contact==="Call" ? "call" : "text"} you when your cards are ready.`}</p>
-    ${hasPartnerWork(sub) ? `<p class="notice" style="margin-top:16px;text-align:left">Your ${workList} ${partnerCards === 1 ? "card is" : "cards are"} opened as a Restored Rarity order in your name, marked as coming from PBG, and tied to ticket ${esc(sub.ticket)}.${sub.cards.some(x => x.repair) ? " You'll get a confirmation from Restored Rarity, and they'll quote the repair before doing any work." : ""}</p>` : ""}
+    ${hasPartnerWork(sub) ? `<p class="notice" style="margin-top:16px;text-align:left">Your ${workList} ${partnerCards === 1 ? "card is" : "cards are"} opened as a Restored Rarity order in your name, marked as coming from PBG, and tied to ticket ${esc(sub.ticket)}.${sub.cards.some(x => x.repair) ? " The repair estimate is collected at PBG. Restored Rarity confirms the work before starting, and we adjust later if their final price differs." : ""}</p>` : ""}
     <div class="qr"><div class="code" id="qr"></div><p><b>Track your order</b><br>Scan this code to see your cards move through each grading stage. The link is printed on your receipt too.</p></div>
     <div id="syncBadge"></div>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px">
@@ -943,7 +946,7 @@ async function printReceipt(s){
     <table><tr><th>Card</th><th>Declared</th><th>Services</th></tr>
     ${s.cards.map(x => `<tr><td>${esc([x.year,x.set,x.name,x.number&&"#"+x.number,x.variant].filter(Boolean).join(" "))}</td><td>${money(+x.value||0)}</td><td>${[x.gem&&"Gem service + magnetic case",x.mag&&"Magnetic slab case at pickup",x.eval&&"Full evaluation",x.clean&&"Prep",x.repair&&("Restored Rarity repair: " + repairText(x))].filter(Boolean).join(", ")||"None"}</td></tr>`).join("")}</table>
     <p style="margin-top:10pt">Total: <b>${money(t.total)}</b> (${s.payment.when==="pickup" ? "due at pickup" : "paid, " + esc(s.payment.method)})</p>
-    ${s.cards.some(x => x.repair) ? `<p style="font-size:10pt">Repairs are billed separately by Restored Rarity TCG${repairEstimate(s.cards) ? `: about ${money(repairEstimate(s.cards))} with the PBG ${RR.discount()}% discount` : ""}. Restored Rarity confirms the price after inspecting the card.</p>` : ""}
+    ${s.cards.some(x => x.repair) ? `<p style="font-size:10pt">Repair estimates are collected at PBG with this payment${repairEstimate(s.cards) ? ` (${money(repairEstimate(s.cards))} with PBG's ${RR.discount()}% off Restored Rarity's price)` : ""}. Adjust later if Restored Rarity's final price differs.${s.cards.some(x => x.repair && !x.repairPrice) ? " Cards over $3,000 are a custom quote and are not in this total yet." : ""}</p>` : ""}
     <p>Prep services by Restored Rarity TCG. Bring this ticket number and a photo ID to pick up.</p>
     <div style="display:flex;gap:14pt;align-items:center;margin-top:10pt"><div id="printQR" style="width:110pt;height:110pt"></div>
       <p style="font-size:10pt">${s.publicToken ? "Track your order:<br>" + esc(PBG.statusUrl(s.publicToken)) : ""}${s.termsVersion ? "<br><br>Terms you signed (version " + esc(s.termsVersion) + "):<br>pbgcardshtx.com/terms.html#" + esc(s.termsVersion) : ""}</p></div>`;
