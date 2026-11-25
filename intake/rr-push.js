@@ -121,7 +121,7 @@
       c.variant ? `Variant: ${c.variant}` : "",
       c.value ? `Declared value: $${String(c.value).replace(/^\$/, "")}` : "",
       c.repair && c.repairNote ? `Needs: ${c.repairNote}` : "",
-      c.repair && c.repairPrice ? `PBG customer repair price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `: $${(+c.repairBase).toFixed(2)} repair + $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""}). Customer was shown this estimate at drop-off.` : (c.repair ? `PBG customer: ${discount()}% off the repair total (repair + value surcharge). ${c.repairCustom ? "Card value is over the surcharge table: custom quote." : ""}` : ""),
+      c.repair && c.repairPrice ? `PBG customer repair price: $${(+c.repairPrice).toFixed(2)} (${c.repairOff || 10}% off the $${(+c.repairList).toFixed(2)} total${c.repairSurcharge ? `: $${(+c.repairBase).toFixed(2)} repair + $${(+c.repairSurcharge).toFixed(2)} value surcharge` : ""}). PBG collects this estimate at payment. Adjust later if the final price differs.` : (c.repair ? `PBG customer: ${discount()}% off the repair total (repair + value surcharge). ${c.repairCustom ? "Card value is over the surcharge table: custom quote, collected at PBG once priced." : "PBG collects the repair at payment."}` : ""),
       (c.clean || c.eval) ? `${[c.clean && "Prep", c.eval && "Pre-grade evaluation"].filter(Boolean).join(" and ")} paid at PBG. This order is the work ticket, not a second bill.` : "",
       `Dropped off at PBG.${alsoGrading}`
     ].filter(Boolean).join("\n");

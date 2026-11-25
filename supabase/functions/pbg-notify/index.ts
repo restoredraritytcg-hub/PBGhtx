@@ -64,8 +64,25 @@ const button = (url: string, label: string) =>
 const termsSec = (o: any) => (o.terms_version && o.terms_version >= "2026-11-13") ? 12 : 10;
 const termsLink = (o: any) => `${env("STATUS_URL", "https://pbgcardshtx.com/status.html").replace(/status\.html.*$/, "")}terms.html${o.terms_version ? "#" + encodeURIComponent(o.terms_version) : ""}`;
 
-// Repair estimates are saved in each card's repair_note as "(est. $31.50 with PBG 10% off, ...)".
-const repairEst = (cards: any[]) => cards.filter((c) => c.repair).reduce((a, c) => a + (+((String(c.repair_note || "").match(/est\. \$([0-9.]+)/) || [])[1] || 0)), 0);
+// Amount owed for one repair: an existing repair_quote, otherwise the estimate
+// (numeric column, or "est. $X" in the note).
+function cardRepairDue(c: any) {
+  if (!c?.repair) return 0;
+  const quote = c.repair_quote != null && +c.repair_quote > 0 ? +c.repair_quote : null;
+  const field = c.repair_estimate != null && c.repair_estimate !== "" && Number.isFinite(+c.repair_estimate) ? +c.repair_estimate : null;
+  const note = +((String(c.repair_note || "").match(/est\. \$([0-9.]+)/) || [])[1] || 0);
+  const estimate = field != null ? field : (note || null);
+  if (quote != null) return quote;
+  return estimate || 0;
+}
+const repairDue = (cards: any[]) => Math.round((cards || []).reduce((a, c) => a + cardRepairDue(c), 0) * 100) / 100;
+function customerTotal(order: any) {
+  const due = repairDue(order.cards || []);
+  const base = +order.total || 0;
+  if (order.repair_included == null || order.repair_included === "") return Math.round((base + due) * 100) / 100;
+  const extra = Math.max(0, Math.round((due - (+order.repair_included || 0)) * 100) / 100);
+  return Math.round((base + extra) * 100) / 100;
+}
 
 // The customer's full receipt: what they're paying for, line by line, plus pickup and auction terms.
 function receipt(order: any, link: string, grading: string, rules: any = {}) {
@@ -80,10 +97,10 @@ function receipt(order: any, link: string, grading: string, rules: any = {}) {
     n(order.prep_count) ? row(`Prep &times; ${n(order.prep_count)}`, money(prepPrice * n(order.prep_count))) : "",
     n(order.gem_fees) ? row(`Gem service with magnetic case &times; ${n(order.gem_count)}`, money(order.gem_fees)) : "",
     n(order.mag_fees) ? row(`Matching magnetic slab case &times; ${n(order.mag_count)} (handed over at pickup)`, money(order.mag_fees)) : "",
-    order.cards.some((c: any) => c.repair) ? row(`Repairs by Restored Rarity, with the PBG discount (billed separately by Restored Rarity; price confirmed after inspection)`, repairEst(order.cards) ? "About " + money(repairEst(order.cards)) : "Quoted separately") : "",
+    order.cards.some((c: any) => c.repair) ? row(`Repairs by Restored Rarity, collected at PBG (an estimate from Restored Rarity's prices with PBG's 10% off, or a quote already on the card). Adjust later if Restored Rarity's final price differs.`, repairDue(order.cards) ? money(repairDue(order.cards)) : "Custom quote") : "",
     order.auction_house ? row(`Auction consignment to ${h(house)}`, "No seller fee") : "",
     n(order.tax) ? row("Tax", money(order.tax)) : "",
-    row(n(order.total) ? (order.payment_when === "pickup" ? "Total due at pickup" : `Total paid${order.payment_method ? " (" + h(order.payment_method) + ")" : ""}`) : "Total", money(order.total), true),
+    row(customerTotal(order) ? (order.payment_when === "pickup" ? "Total due at pickup" : `Total paid${order.payment_method ? " (" + h(order.payment_method) + ")" : ""}`) : "Total", money(customerTotal(order)), true),
   ].join("");
   return `
     <p style="margin:0 0 4px;font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.06em">Ticket</p>
@@ -165,7 +182,7 @@ Deno.serve(async (req) => {
     if (env("SHOP_EMAIL")) {
       await send("shop_new", env("SHOP_EMAIL"), `New intake ${order.ticket}: ${order.customer_first} ${order.customer_last}, ${order.cards.length} card(s)`, layout(`New order ${order.ticket}`, `
         <p><b>${h(order.customer_first)} ${h(order.customer_last)}</b><br>${h(order.phone)}${order.email ? " | " + h(order.email) : ""}<br>Reach by ${h(order.contact_pref ?? "")}</p>
-        <p>Grading: ${h(grading)}<br>Total: ${money(order.total)} (${order.payment_when === "pickup" ? "due at pickup" : "paid, " + h(order.payment_method ?? "")})<br>Cards accepted by ${h(order.received_by ?? "")}</p>
+        <p>Grading: ${h(grading)}<br>Total: ${money(customerTotal(order))} (${order.payment_when === "pickup" ? "due at pickup" : "paid, " + h(order.payment_method ?? "")})<br>Cards accepted by ${h(order.received_by ?? "")}</p>
         ${order.customer_notes ? `<p><b>Customer note:</b> ${h(order.customer_notes)}</p>` : ""}
         ${cardTable(order.cards)}`), order, ev.id);
     }
@@ -195,7 +212,7 @@ Deno.serve(async (req) => {
         <p>${h(stage.customer_text)}</p>
         ${note}
         ${idx >= 0 ? `<p style="font-size:14px;color:#555">Step ${idx + 1} of ${list.length} for your ${h(grading)} order.</p>` : ""}
-        ${ready && order.payment_when === "pickup" ? `<p>Balance due at pickup: <b>${money(order.total)}</b>. Bring your ticket number and a photo ID.</p>` : ""}
+        ${ready && order.payment_when === "pickup" ? `<p>Balance due at pickup: <b>${money(customerTotal(order))}</b>. Bring your ticket number and a photo ID.</p>` : ""}
         ${ready ? `<p style="font-size:14px;background:#fff4cc;padding:10px 12px;border-radius:8px">Storage is free until <b>${new Date(new Date(order.ready_at ?? ev.created_at).getTime() + 30 * 86400000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}</b>. After that, a holding fee of $1 per card per day applies (terms section ${termsSec(order)}).</p>` : ""}
         ${button(link, done ? "See your grades" : "Track your order")}
         ${graded || order.cards.some((c: any) => c.eval_result) ? cardTable(order.cards, graded) : ""}`), order, ev.id);

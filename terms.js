@@ -2,7 +2,7 @@
 // To change the terms: edit the text, set a new version (today's date), and push.
 // Every order saves the version and the full text the customer signed, so older orders keep their own terms.
 window.PBG_TERMS = {
-  version: "2026-11-16b",
+  version: "2026-11-25",
   text:
 `PBG CARDS & COLLECTIBLES HTX: SUBMISSION TERMS
 
@@ -20,7 +20,7 @@ These terms are an agreement between you and PBG Cards & Collectibles HTX ("PBG"
 
 6. PREP AND EVALUATIONS (RESTORED RARITY). Prep (cleaning and grading prep) and full evaluations with magnification are performed by Restored Rarity, an independent business and partner of PBG, by professionals in the restoration space familiar with grading company requirements. Cards you choose these services for go from PBG to Restored Rarity and back to PBG before any grading submission. Prep is surface-level and non-invasive, but handling any card carries some risk. An evaluation is a professional opinion, not a promised grade. At check-in you choose what happens if an evaluation suggests a low grade (call you first, submit anyway, or return the card ungraded); PBG and Restored Rarity will follow that choice. If you choose "call me first" and we can't reach you within 7 days, the card is returned to PBG ungraded and section 12 applies.
 
-7. REPAIRS. PBG is an authorized drop-off location for Restored Rarity. Repairs are a separate submission with Restored Rarity under its own Terms & Conditions at restoredraritytcg.com. Restored Rarity quotes and bills repairs directly, and no repair is done without your approval. Repairs are priced on Restored Rarity's posted repair prices plus Restored Rarity's card-value surcharge (a percentage of the card's value, based on its condition without the damage being repaired; cards above Restored Rarity's top value get a custom quote). PBG customers get 10% off that total. The repair price shown at check-in is an estimate based on Restored Rarity's current price list and the value you declare; Restored Rarity confirms the final price after inspecting the card, and it is not part of PBG's total.
+7. REPAIRS. PBG is an authorized drop-off location for Restored Rarity. Repairs are a separate submission with Restored Rarity under its own Terms & Conditions at restoredraritytcg.com, and no repair is done without your approval. Repairs are priced on Restored Rarity's posted repair prices plus Restored Rarity's card-value surcharge (a percentage of the card's value, based on its condition without the damage being repaired; cards above Restored Rarity's top value get a custom quote). PBG customers get 10% off that total. The repair price shown at check-in is an estimate based on Restored Rarity's current price list and the value you declare, with that 10% off. PBG collects that estimate at payment, with the rest of this ticket. If Restored Rarity's final price differs after inspection, the difference is adjusted later. A card over Restored Rarity's top value has no estimate at check-in; PBG collects the custom quote once it is priced.
 
 8. PAYMENT. All charges, including any upcharge and holding fees, must be paid before cards are released. Fees for services already performed (prep, evaluation, and grading fees paid to the grading company) are non-refundable. If you dispute or reverse a payment for services that were performed, the amount stays owed, PBG may hold your cards until it is paid, and you will cover any chargeback fee.
 
