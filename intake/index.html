@@ -15,7 +15,7 @@
 <script src="../pbg-config.js?v=20261116a"></script>
 <script src="../pbg-api.js?v=20261125a"></script>
 <script src="../terms.js?v=20261125a"></script>
-<script src="cardsearch.js?v=20261116a"></script>
+<script src="cardsearch.js?v=20261125b"></script>
 <script src="rr-push.js?v=20261125a"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,7 +26,8 @@
   --steel:#6C778A;--line:#D5D9E0;--green:#1F8A4C;--amber:#B7791F;--wide:"wdth" 118;--narrow:"wdth" 72;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%}
+html,body{margin:0;height:100%;max-width:100%;overflow-x:clip}
+@supports not (overflow-x:clip){html,body{overflow-x:hidden}}
 body{background:var(--paper);color:var(--navy);font-family:Archivo,system-ui,sans-serif;font-size:18px;line-height:1.45;-webkit-font-smoothing:antialiased;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 h1,h2,h3{margin:0;line-height:1.1;font-variation-settings:var(--wide);font-style:italic;font-weight:900}
@@ -38,16 +39,22 @@ button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--red);outline-offset:2px}
 [hidden]{display:none!important}
 
-.bar{background:#000;color:#fff;display:flex;align-items:center;gap:20px;padding:0 24px;height:68px;position:sticky;top:0;z-index:10}
+.bar{background:#000;color:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;height:68px;position:sticky;top:0;z-index:10;width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.bar img,.bar .sub{flex:none}
 .bar .mark{font-weight:900;font-size:24px;font-variation-settings:"wdth" 125;letter-spacing:.02em}
-.bar .sub{font-size:15px;opacity:.75;font-variation-settings:var(--narrow)}
-.bar .right{margin-left:auto;display:flex;gap:10px;align-items:center}
-.pill{font-size:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12)}
+.bar .sub{font-size:15px;opacity:.75;font-variation-settings:var(--narrow);white-space:nowrap}
+.bar .right{margin-left:auto;display:flex;gap:10px;align-items:center;min-width:0;max-width:100%}
+.pills{display:flex;gap:8px;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none;height:0}
+.pills > *{flex:none}
+.pills.more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent)}
+.pill{font-size:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12);white-space:nowrap}
 .pill.warn{background:#F6E0B5;color:#5A3A00}
-.icon-btn{width:48px;height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;display:grid;place-items:center;cursor:pointer}
+.icon-btn{width:48px;height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
 
-.steps{display:flex;gap:6px;padding:16px 24px 0;max-width:1100px;margin:0 auto}
-.steps div{flex:1;font-size:15px;color:var(--steel);border-top:4px solid var(--line);padding-top:8px}
+.steps{display:flex;gap:6px;padding:16px 24px 0;max-width:1100px;margin:0 auto;min-width:0}
+.steps div{flex:1;min-width:0;font-size:15px;color:var(--steel);border-top:4px solid var(--line);padding-top:8px}
+@media (max-width:640px){.steps{padding:12px 12px 0}.steps div{font-size:13px;line-height:1.2}}
 .steps div.on{color:var(--navy);border-color:var(--red);font-weight:700}
 .steps div.done{color:var(--navy);border-color:var(--navy)}
 
@@ -89,7 +96,7 @@ input.t.bad{border-color:var(--red)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 
 .foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:14px 24px calc(14px + env(safe-area-inset-bottom));z-index:9}
-.foot .in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.foot .in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .foot .sum{margin-right:auto;font-size:16px;color:var(--steel)}
 .foot .sum b{color:var(--navy);font-size:22px}
 
@@ -158,6 +165,7 @@ table.sum td.n,table.sum th.n{text-align:right;white-space:nowrap}
 @media (max-width:760px){.list .row{grid-template-columns:1fr 1fr}}
 .notice{background:#FCEFD6;color:#5A3A00;border-radius:12px;padding:14px 16px;font-size:15px;margin-bottom:16px}
 .tierline{display:grid;grid-template-columns:1.2fr 1.6fr .8fr .8fr auto auto;gap:8px;align-items:end;margin-top:8px}
+@media (max-width:760px){.tierline{grid-template-columns:1fr 1fr}}
 .tierline input.t{min-height:46px;font-size:16px;padding:8px 10px}
 .grader-block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
 
@@ -198,8 +206,10 @@ table.sum td.n,table.sum th.n{text-align:right;white-space:nowrap}
   <img src="pbg-logo.png?v=2" alt="PBG Cards & Collectibles HTX" style="height:50px;width:auto">
   <span class="sub">Card intake</span>
   <div class="right">
-    <span class="pill warn" id="setupPill" hidden>Prices not set</span>
-    <span class="pill" id="queuePill" hidden></span>
+    <div class="pills">
+      <span class="pill warn" id="setupPill" hidden>Prices not set</span>
+      <span class="pill" id="queuePill" hidden></span>
+    </div>
     <button class="icon-btn" id="staffBtn" aria-label="Staff menu">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -460,7 +470,13 @@ async function refreshPills(){
   if(PBG.mode === "live" && !who){ q.hidden = false; q.className = "pill warn"; q.textContent = "Not signed in"; }
   else if(pend){ q.hidden = false; q.className = "pill warn"; q.textContent = `${pend} waiting to upload`; }
   else q.hidden = true;
+  requestAnimationFrame(fitPills);
 }
+function fitPills(){
+  const p = document.querySelector(".pills"); if(!p) return;
+  p.classList.toggle("more", p.scrollWidth > p.clientWidth + 2);
+}
+addEventListener("resize", () => requestAnimationFrame(fitPills), { passive: true });
 
 /* ---------------- screens ---------------- */
 function welcome(){
@@ -1144,7 +1160,7 @@ function staffSettings(){
         <p style="color:var(--steel);font-size:15px">Each employee gets their own 4-digit code. They enter it on the staff check screen to accept a customer's cards, and their name is saved on the order. Changes here save right away.</p>
         <div id="emps">${(s.employees || []).length ? s.employees.map((e, i) => `<div class="acct" style="justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)"><span><b>${esc(e.name)}</b> &nbsp;<span style="color:var(--steel)">code ••••</span></span><button class="btn btn-ghost btn-sm" data-rme="${i}">Remove</button></div>`).join("")
           : `<p class="notice" style="margin:0">No employees yet. Until you add one, the manager PIN accepts cards.</p>`}</div>
-        <div class="grid" style="grid-template-columns:1fr 160px auto;align-items:end;gap:10px">
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end;gap:10px">
           <label class="f">Employee name<input class="t" id="eName" autocomplete="off"></label>
           <label class="f">4-digit code<input class="t" id="eCode" inputmode="numeric" maxlength="4" autocomplete="off"></label>
           <button class="btn btn-navy btn-sm" id="addEmp" style="min-height:54px">Add employee</button>
