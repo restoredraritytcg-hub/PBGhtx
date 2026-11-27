@@ -54,3 +54,7 @@ When a PBG check-in has prep, a pre-grade evaluation, or a repair, the iPad open
 The staff portal shows both: "Restored Rarity order RR-… is tied to PBG ticket PBG-…". A retry does not open a second Restored Rarity order. Orders that were already sent before this change are left as they are.
 
 Prep and pre-grade evaluation are paid at PBG. The Restored Rarity order is the work ticket. The repair estimate is also collected at PBG at payment. Adjust later if Restored Rarity's final price differs. A card over $3,000 waits for the custom quote.
+
+## 10Point footer credit
+
+The public site footer must keep a small “Built by 10Point Studios” credit linking to https://10pointstudios.com (with the existing utm tags). Do not remove it. Compass &amp; Oak sites are the exception and must not mention 10Point.
